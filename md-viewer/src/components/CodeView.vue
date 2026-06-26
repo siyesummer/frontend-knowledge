@@ -27,7 +27,7 @@ onMounted(() => {
     readOnly: true,
     automaticLayout: true,
     minimap: { enabled: true },
-    fontSize: 14,
+    fontSize: 15,
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
     wordWrap: 'on',

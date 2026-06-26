@@ -306,7 +306,7 @@ body {
   max-width: 980px;
   margin: 0 auto;
   line-height: 1.75;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-primary);
 }
 .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
@@ -337,13 +337,13 @@ body {
 .markdown-body th { background: var(--bg-table-th); font-weight: 600; }
 .markdown-body code {
   background: var(--bg-code-inline); padding: 2px 5px; border-radius: 4px;
-  font-family: 'SF Mono', Consolas, Menlo, monospace; font-size: 13.5px;
+  font-family: 'SF Mono', Consolas, Menlo, monospace; font-size: 14.5px;
   color: var(--text-code);
 }
 .markdown-body pre {
   background: var(--pre-bg); color: var(--pre-fg);
   padding: 14px 16px; border-radius: 6px;
-  overflow-x: auto; font-size: 14px; line-height: 1.55;
+  overflow-x: auto; font-size: 15px; line-height: 1.55;
 }
 .markdown-body pre code { background: transparent; padding: 0; color: inherit; }
 .markdown-body img { max-width: 100%; }
