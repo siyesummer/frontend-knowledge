@@ -151,9 +151,7 @@ Function.prototype.myBind = function(ctx) {
     return result;
   }
 
-  function Bridge() {}
-  Bridge.prototype = originFn.prototype
-  bindFn.prototype = new Bridge()
+  bindFn.prototype = Object.create(originFn.prototype)
   bindFn.prototype.constructor = bindFn
 
 
