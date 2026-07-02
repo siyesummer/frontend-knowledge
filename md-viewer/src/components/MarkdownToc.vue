@@ -12,7 +12,7 @@
           'toc-h3': item.level >= 3,
           'toc-active': item.id === activeId
         }"
-        :style="{ paddingLeft: Math.min((item.level - 1), 3) * 10 + 'px' }"
+        :style="{ paddingLeft: Math.min(item.level - 1, 3) * 10 + 'px' }"
         @click="scrollTo(item.id)"
       >
         {{ item.text }}
@@ -22,44 +22,18 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { parseMarkdownHeadings } from '../utils/markdownHeadings'
 
 const props = defineProps({
   source: String,
   container: { type: Object, default: null }
 })
 
-/**
- * 从原始 markdown 中提取标题列表
- */
-const items = computed(() => {
-  const lines = (props.source || '').split('\n')
-  const results = []
-  for (const line of lines) {
-    const m = line.match(/^(#{1,6})\s+(.+?)(?:\s*\{#[\w-]+\})?\s*$/)
-    if (!m) continue
-    const level = m[1].length
-    const text = m[2].replace(/<[^>]+>/g, '').trim()
-    const id = slugify(text)
-    results.push({ level, text, id })
-  }
-  return results
-})
+const items = computed(() => parseMarkdownHeadings(props.source))
+const activeId = ref(null)
+let observers = []
 
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w一-鿿\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-/**
- * 找到 .md-content 这个滚动容器，精确控制它的 scrollTop
- * 注意：Vue 3 模板中 ref 会自动 .value 解包，
- *       所以 props.container 已经是 DOM 元素本身，不要再 .value
- */
 function getScrollContainer() {
   const el = props.container
   if (!el) return null
@@ -70,55 +44,53 @@ function scrollTo(id) {
   const el = document.getElementById(id)
   const scroller = getScrollContainer()
   if (!el || !scroller) return
+
   const parentRect = scroller.getBoundingClientRect()
   const targetRect = el.getBoundingClientRect()
-  // 计算目标元素在滚动容器内的相对偏移
   const offset = scroller.scrollTop + targetRect.top - parentRect.top - 16
   scroller.scrollTo({ top: offset, behavior: 'smooth' })
 }
 
-// ============ 监听滚动，高亮当前可见标题 ============
-const activeId = ref(null)
-let observer = null
+function disconnectObservers() {
+  for (const observer of observers) observer.disconnect()
+  observers = []
+}
 
-onMounted(() => {
-  observer = new IntersectionObserver(
-    entries => {
-      const firstVisible = entries.find(e => e.isIntersecting)
-      if (firstVisible) {
-        activeId.value = firstVisible.target.id
-      }
-    },
-    {
-      // ★ 以 .md-content 为视口基准，不是整个浏览器窗口
-      rootMargin: '-16px 0px -75% 0px',
-      threshold: 0
-    }
-  )
-  watch(() => props.source, () => {
-    setTimeout(attachObserver, 150)
-  }, { immediate: true })
-})
+function attachObservers() {
+  disconnectObservers()
 
-onBeforeUnmount(() => observer?.disconnect())
-
-function attachObserver() {
-  observer?.disconnect()
-  // 找到滚动容器作为 observer 的 root
   const root = getScrollContainer()
   if (!root) return
-  // 找到容器内所有带 id 的标题
-  const hs = root.querySelectorAll('h1[id],h2[id],h3[id],h4[id]')
-  for (const h of hs) {
-    // 显式指定 root，而非全局 document
-    const ob = new IntersectionObserver(
+
+  const headings = root.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]')
+  for (const heading of headings) {
+    const observer = new IntersectionObserver(
       entries => {
-        const first = entries.find(e => e.isIntersecting)
-        if (first) activeId.value = first.target.id
+        const firstVisible = entries.find(entry => entry.isIntersecting)
+        if (firstVisible) activeId.value = firstVisible.target.id
       },
       { root, rootMargin: '-16px 0px -75% 0px', threshold: 0 }
     )
-    ob.observe(h)
+
+    observer.observe(heading)
+    observers.push(observer)
+  }
+
+  if (!activeId.value && headings.length) {
+    activeId.value = headings[0].id
   }
 }
+
+onMounted(() => {
+  watch(
+    () => props.source,
+    () => {
+      activeId.value = null
+      setTimeout(attachObservers, 150)
+    },
+    { immediate: true }
+  )
+})
+
+onBeforeUnmount(disconnectObservers)
 </script>

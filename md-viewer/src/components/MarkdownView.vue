@@ -3,27 +3,17 @@
 </template>
 
 <script setup>
-import { computed, watch, nextTick, onMounted } from 'vue'
+import { computed, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
-
-// 两套 highlight 主题 CSS，按 theme 动态切换
 import darkHljs from 'highlight.js/styles/github-dark.css?inline'
 import lightHljs from 'highlight.js/styles/github.css?inline'
+import { createUniqueHeadingIdFactory, extractHeadingText } from '../utils/markdownHeadings'
 
 const props = defineProps({
   source: String,
   theme: { type: String, default: 'light' }
 })
-
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w一-鿿\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
 
 const md = new MarkdownIt({
   html: true,
@@ -39,31 +29,36 @@ const md = new MarkdownIt({
   }
 })
 
-// ★ 覆盖标题渲染规则：加上 id 属性，让 TOC 的 scrollTo 能定位
-const defaultHeading = md.renderer.rules.heading_open || function (tokens, idx, options, env, self) {
-  return self.renderToken(tokens, idx, options)
-}
+const defaultHeadingOpen =
+  md.renderer.rules.heading_open ||
+  function (tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options)
+  }
+
 md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
   const token = tokens[idx]
-  const level = token.tag
-  // 向后找 inline token 拿到纯文本
   let i = idx + 1
+
   while (i < tokens.length && tokens[i].type !== 'heading_close') {
     if (tokens[i].type === 'inline') {
-      const text = tokens[i].content.replace(/<[^>]+>/g, '').trim()
-      const id = slugify(text) || 'h'
-      token.attrSet('id', id)
+      const text = extractHeadingText(tokens[i].content)
+      const nextId = env?.nextHeadingId || (() => 'h')
+      token.attrSet('id', nextId(text))
       break
     }
     i++
   }
-  return defaultHeading(tokens, idx, options, env, self)
+
+  return defaultHeadingOpen(tokens, idx, options, env, self)
 }
 
-const html = computed(() => md.render(props.source || ''))
+const html = computed(() =>
+  md.render(props.source || '', {
+    nextHeadingId: createUniqueHeadingIdFactory()
+  })
+)
 
-// 用 <style id="hljs-theme"> 动态注入高亮主题
-function applyHljsTheme(t) {
+function applyHljsTheme(theme) {
   const id = 'hljs-theme'
   let el = document.getElementById(id)
   if (!el) {
@@ -71,7 +66,8 @@ function applyHljsTheme(t) {
     el.id = id
     document.head.appendChild(el)
   }
-  el.textContent = t === 'dark' ? darkHljs : lightHljs
+  el.textContent = theme === 'dark' ? darkHljs : lightHljs
 }
+
 watch(() => props.theme, applyHljsTheme, { immediate: true })
 </script>
