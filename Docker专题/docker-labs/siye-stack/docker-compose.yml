@@ -1,0 +1,148 @@
+name: siye-stack-lab6
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.0.39}
+    container_name: lab6-mysql
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-siye_chat_docker_lab_6}
+      MYSQL_USER: ${MYSQL_USER:-siye_chat_lab}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - app-net
+
+  linux-server:
+    build:
+      context: ./linux-server
+      dockerfile: Dockerfile
+      args:
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:21-jre}
+    image: ${LINUX_SERVER_IMAGE:-siye-linux-server-stack:6.0.0}
+    container_name: lab6-linux-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-siye_chat_docker_lab_6}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-siye_chat_lab}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      SPRING_PROFILES_ACTIVE: docker-lab
+    expose:
+      - "8081"
+    volumes:
+      - ${SIYE_LOG_DIR:-./runtime-logs}:/var/log/siye:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - app-net
+
+  easy-chat:
+    build:
+      context: ./easy-chat
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm-slim}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: ${EASY_CHAT_IMAGE:-siye-easy-chat-stack:6.0.0}
+    container_name: lab6-easy-chat
+    restart: unless-stopped
+    init: true
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      LISTENING_PORT: 3030
+      SERVER_HOST: nginx
+    expose:
+      - "3030"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3030/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - app-net
+
+  music-api:
+    build:
+      context: ./NeteaseCloudMusicApi-private
+      dockerfile: ../music-api.Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm-slim}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
+    image: ${MUSIC_API_IMAGE:-siye-music-api-stack:6.0.0}
+    container_name: lab6-music-api
+    restart: unless-stopped
+    init: true
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-*}
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const socket=require('net').connect(3000,'127.0.0.1');socket.on('connect',()=>{socket.destroy();process.exit(0)});socket.on('error',()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - app-net
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+      args:
+        NGINX_BASE_IMAGE: ${NGINX_BASE_IMAGE:-nginx:1.27-alpine}
+    image: ${NGINX_IMAGE:-siye-nginx-stack:6.0.0}
+    container_name: lab6-nginx
+    restart: unless-stopped
+    depends_on:
+      linux-server:
+        condition: service_healthy
+      easy-chat:
+        condition: service_healthy
+      music-api:
+        condition: service_healthy
+    ports:
+      - ${NGINX_HOST_PORT:-8087}:80
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - app-net
+
+volumes:
+  mysql_data:
+
+networks:
+  app-net:
+    driver: bridge

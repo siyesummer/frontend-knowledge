@@ -1,0 +1,14 @@
+{
+  "name": "@siyesummer/easy-chat",
+  "version": "0.0.3",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dayjs": "^1.10.6",
+    "express": "^4.17.1",
+    "siye-core": "^0.1.5",
+    "socket.io": "^3.1.2"
+  }
+}

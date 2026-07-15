@@ -1,0 +1,8 @@
+.env
+linux-server/*.jar
+NeteaseCloudMusicApi-private/*
+!NeteaseCloudMusicApi-private/
+!NeteaseCloudMusicApi-private/.gitkeep
+runtime-logs/*
+!runtime-logs/
+!runtime-logs/.gitkeep

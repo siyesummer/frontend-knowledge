@@ -1,0 +1,56 @@
+services:
+  music-api:
+    build:
+      context: ./NeteaseCloudMusicApi-4.13.8
+      dockerfile: ../music-api.Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm-slim}
+    image: ${MUSIC_API_IMAGE:-siye-music-api-network:5.0.0}
+    container_name: lab5-music-api
+    restart: unless-stopped
+    init: true
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-*}
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const socket=require('net').connect(3000,'127.0.0.1');socket.on('connect',()=>{socket.destroy();process.exit(0)});socket.on('error',()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - app-net
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+      args:
+        NGINX_BASE_IMAGE: ${NGINX_BASE_IMAGE:-nginx:1.27-alpine}
+    image: ${NGINX_IMAGE:-siye-nginx-music-api-network:5.0.0}
+    container_name: lab5-nginx
+    restart: unless-stopped
+    depends_on:
+      music-api:
+        condition: service_healthy
+    ports:
+      - "${NGINX_HOST_PORT:-8086}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
