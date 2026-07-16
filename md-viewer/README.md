@@ -1,12 +1,14 @@
 # MD Viewer
 
-一个本地小工具：左侧展示 `E:\本地项目\frontend\` 目录树，右侧查看 `.md / .js / .ts / .vue / .json / .html / .css` 等文件，并在文件被修改时**自动刷新**。
+一个本地小工具：左侧展示 `frontend-knowledge` 目录树，右侧查看 Markdown、代码、脚本及部署配置等文本文件，并在文件被修改时**自动刷新**。
 
 ## ✨ 特性
 
 - 📁 **左侧文件树**：递归展示 `frontend/` 下所有支持的文件
+- 🔎 **快速定位**：支持文件/目录搜索、全部收起和定位当前文件
+- ↔️ **可调侧栏**：拖拽调整文件树宽度并自动记忆，也可临时隐藏侧栏
 - 📝 **Markdown 渲染**：`markdown-it` + `highlight.js` 代码高亮（github-dark 主题）
-- 📜 **JS / TS / JSON 等代码**：Monaco Editor 只读模式（VS Code 同款内核）
+- 📜 **代码与配置文件**：Monaco Editor 只读模式，支持 JS / TS / Vue / JSON / YAML / SQL / Shell / PowerShell / Dockerfile / `.env` / Nginx 配置等
 - 🔄 **实时同步**：`chokidar` 监听文件变化，WebSocket 推送，**文件保存即刷新**
 - 🟢 **变更高亮**：变更文件在文件树中短暂闪烁
 - 🔌 **断线自动重连**
@@ -24,7 +26,7 @@
 > 要求：Node.js ≥ 18，npm ≥ 9
 
 ```bash
-cd "E:\本地项目\frontend\md-viewer"
+cd "E:\本地项目\frontend-knowledge\md-viewer"
 npm install
 npm run dev
 ```
@@ -68,18 +70,28 @@ md-viewer/
 服务端常量在 `server/index.js` 顶部：
 
 ```js
-const ROOT = path.resolve(__dirname, '..', '..')   // 监听目录（默认是 frontend）
-const PORT = 3001                                   // 后端端口
-const ALLOWED_EXT = new Set(['.md', '.js', '.ts', '.json', '.txt', '.html', '.css', '.vue'])
+const ROOT = path.resolve(__dirname, '..', '..')   // 监听目录（默认是 frontend-knowledge）
+const PORT = Number(process.env.MD_VIEWER_PORT || 3001) // 后端端口，可临时覆盖
+const ALLOWED_EXT = new Set([/* 支持的文本文件扩展名 */])
+const ALLOWED_NAMES = new Set([/* Dockerfile、.env、.gitignore 等特殊文件名 */])
 const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'dist', 'md-viewer'])
 ```
 
 按需修改即可。比如想只展示某个子目录，把 `ROOT` 指过去就行。
 
+如果本机 `3001` 已被占用，可只为当前终端临时指定其他端口：
+
+```powershell
+$env:MD_VIEWER_PORT=3101
+npm run dev
+```
+
+服务端和 Vite 代理会同时读取该变量，因此网页端仍可正常请求 API 和 WebSocket。
+
 ## 🛡️ 安全
 
 - 后端用 `safeJoin` 防止路径穿越（`../../etc/passwd` 之类）
-- 只允许读取白名单后缀
+- 只允许读取白名单文本类型和明确的特殊文件名，二进制文件不会出现在文件树中
 - 仅本地访问，**不要部署到公网**
 
 ## 🔍 同步原理

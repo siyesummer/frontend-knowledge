@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 import path from 'path'
 
+const apiPort = Number(process.env.MD_VIEWER_PORT || 3001)
+const apiTarget = `http://localhost:${apiPort}`
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -21,8 +24,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3001',
-      '/ws': { target: 'ws://localhost:3001', ws: true }
+      '/api': apiTarget,
+      '/ws': { target: apiTarget, ws: true }
     }
   }
 })

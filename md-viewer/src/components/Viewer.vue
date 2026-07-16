@@ -5,7 +5,7 @@
       <span class="meta" v-if="file.size != null">{{ formatSize(file.size) }} · {{ formatTime(file.mtime) }}</span>
     </div>
     <div class="viewer" ref="viewerRef">
-      <div v-if="!file" class="empty">从左侧选择一个 .md / .js 文件</div>
+      <div v-if="!file" class="empty">从左侧选择一个 Markdown、代码或配置文件</div>
 
       <!-- md 文件：TOC + 内容 -->
       <template v-else-if="file.ext === '.md'">
@@ -16,7 +16,7 @@
       </template>
 
       <!-- 代码文件 -->
-      <CodeView v-else :source="file.content" :lang="extToLang(file.ext)" :theme="theme" />
+      <CodeView v-else :source="file.content" :lang="fileToLang(file)" :theme="theme" />
     </div>
   </div>
 </template>
@@ -39,13 +39,27 @@ watch(() => props.file?.path, () => {
   if (content) content.scrollTop = 0
 })
 
-function extToLang(ext) {
-  const e = (ext || '').toLowerCase()
-  if (e === '.ts') return 'typescript'
-  if (e === '.js') return 'javascript'
-  if (e === '.json') return 'json'
-  if (e === '.html' || e === '.vue') return 'html'
-  if (e === '.css') return 'css'
+function fileToLang(file) {
+  const fileName = (file?.path || '').split('/').pop().toLowerCase()
+  const ext = (file?.ext || '').toLowerCase()
+
+  if (fileName === 'dockerfile' || fileName === 'containerfile' || ext === '.dockerfile') return 'dockerfile'
+  if (fileName === 'makefile') return 'plaintext'
+  if (fileName === '.env' || fileName.startsWith('.env.') || ext === '.env' || ext === '.example') return 'ini'
+  if (ext === '.ts' || ext === '.tsx') return 'typescript'
+  if (['.js', '.jsx', '.mjs', '.cjs'].includes(ext)) return 'javascript'
+  if (ext === '.json' || ext === '.jsonc') return 'json'
+  if (ext === '.html' || ext === '.htm' || ext === '.vue') return 'html'
+  if (ext === '.css') return 'css'
+  if (ext === '.scss' || ext === '.sass') return 'scss'
+  if (ext === '.less') return 'less'
+  if (ext === '.yml' || ext === '.yaml') return 'yaml'
+  if (ext === '.xml' || ext === '.svg') return 'xml'
+  if (ext === '.sql') return 'sql'
+  if (['.sh', '.bash', '.zsh'].includes(ext)) return 'shell'
+  if (ext === '.ps1') return 'powershell'
+  if (ext === '.bat' || ext === '.cmd') return 'bat'
+  if (['.ini', '.properties', '.toml'].includes(ext)) return 'ini'
   return 'plaintext'
 }
 

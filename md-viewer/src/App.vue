@@ -1,32 +1,79 @@
 <template>
-  <aside class="sidebar">
+  <aside
+    v-if="sidebarVisible"
+    class="sidebar"
+    :style="{ width: sidebarWidth + 'px' }"
+  >
     <div class="sidebar-header">
-      <span class="sidebar-title">📁 {{ tree?.name || 'loading...' }}</span>
+      <span class="sidebar-title" :title="tree?.name">📁 {{ tree?.name || 'loading...' }}</span>
+      <span class="ws-status" :class="wsState" :title="wsLabel">
+        <span class="dot"></span>
+      </span>
       <button
-        class="theme-toggle"
+        class="icon-button"
         :title="theme === 'dark' ? '切换到亮色' : '切换到暗色'"
         @click="toggleTheme"
       >
         {{ theme === 'dark' ? '☀️' : '🌙' }}
       </button>
-      <span class="ws-status" :class="wsState">
-        <span class="dot"></span>
-        {{ wsLabel }}
-      </span>
+      <button class="icon-button" title="隐藏侧栏" @click="sidebarVisible = false">‹</button>
     </div>
+
+    <div class="sidebar-tools">
+      <div class="tree-search-wrap">
+        <span class="tree-search-icon">⌕</span>
+        <input
+          v-model="treeQuery"
+          class="tree-search"
+          type="search"
+          placeholder="搜索文件或目录"
+          @keydown.esc="treeQuery = ''"
+        />
+        <button
+          v-if="treeQuery"
+          class="search-clear"
+          title="清空搜索"
+          @click="treeQuery = ''"
+        >×</button>
+      </div>
+      <button class="tool-button" title="全部收起" @click="fileTreeRef?.collapseAll()">收起</button>
+      <button
+        class="tool-button"
+        :disabled="!currentFile"
+        title="定位当前文件"
+        @click="fileTreeRef?.revealActive()"
+      >定位</button>
+    </div>
+
     <FileTree
+      ref="fileTreeRef"
       :root="tree"
       :active-path="currentFile?.path"
       :changed-paths="changedPaths"
+      :query="treeQuery"
       @pick="openFile"
     />
   </aside>
+
+  <div
+    v-if="sidebarVisible"
+    class="sidebar-resizer"
+    title="拖拽调整侧栏宽度"
+    @pointerdown="startSidebarResize"
+  ></div>
+
+  <button
+    v-else
+    class="sidebar-reopen"
+    title="显示文件树"
+    @click="sidebarVisible = true"
+  >☰</button>
 
   <Viewer :file="currentFile" :theme="theme" />
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, provide, watch } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, provide, watch, nextTick } from 'vue'
 import FileTree from './components/FileTree.vue'
 import Viewer from './components/Viewer.vue'
 
@@ -35,6 +82,19 @@ const currentFile = ref(null)
 const changedPaths = reactive(new Set())
 const wsState = ref('connecting')   // connecting | connected | error
 const wsLabel = ref('连接中')
+const fileTreeRef = ref(null)
+const treeQuery = ref('')
+
+const SIDEBAR_WIDTH_KEY = 'mdviewer:sidebar-width'
+const SIDEBAR_MIN_WIDTH = 260
+const SIDEBAR_MAX_WIDTH = 720
+const savedSidebarWidth = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY))
+const sidebarWidth = ref(
+  Number.isFinite(savedSidebarWidth)
+    ? Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, savedSidebarWidth))
+    : 360
+)
+const sidebarVisible = ref(true)
 
 // ============ 主题 ============
 const THEME_KEY = 'mdviewer:theme'
@@ -76,10 +136,36 @@ async function openFile(node) {
       throw new Error(err.error || res.statusText)
     }
     currentFile.value = await res.json()
+    await nextTick()
+    fileTreeRef.value?.revealActive()
   } catch (e) {
     console.error(e)
     alert('文件加载失败：' + e.message)
   }
+}
+
+function startSidebarResize(event) {
+  event.preventDefault()
+  const startX = event.clientX
+  const startWidth = sidebarWidth.value
+  document.body.classList.add('is-resizing-sidebar')
+
+  function onPointerMove(moveEvent) {
+    sidebarWidth.value = Math.min(
+      SIDEBAR_MAX_WIDTH,
+      Math.max(SIDEBAR_MIN_WIDTH, startWidth + moveEvent.clientX - startX)
+    )
+  }
+
+  function onPointerUp() {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth.value))
+    document.body.classList.remove('is-resizing-sidebar')
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+  }
+
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
 }
 
 // 节流：短时间内多次变更，只重新拉一次树

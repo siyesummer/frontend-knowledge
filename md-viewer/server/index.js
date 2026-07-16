@@ -14,8 +14,21 @@ const __dirname = path.dirname(__filename)
 const ROOT = path.resolve(__dirname, '..', '..')
 const SELF_DIR = path.basename(path.resolve(__dirname, '..'))  // 'md-viewer'
 
-const PORT = 3001
-const ALLOWED_EXT = new Set(['.md', '.js', '.ts', '.json', '.txt', '.html', '.css', '.vue'])
+const PORT = Number(process.env.MD_VIEWER_PORT || 3001)
+const ALLOWED_EXT = new Set([
+  '.md', '.mdx', '.txt', '.log',
+  '.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.vue',
+  '.json', '.jsonc', '.html', '.htm', '.css', '.scss', '.sass', '.less',
+  '.yml', '.yaml', '.xml', '.svg', '.sql',
+  '.sh', '.bash', '.zsh', '.ps1', '.bat', '.cmd',
+  '.conf', '.config', '.ini', '.properties', '.toml',
+  '.env', '.example', '.template', '.dockerfile'
+])
+const ALLOWED_NAMES = new Set([
+  'dockerfile', 'containerfile', 'makefile', 'license',
+  '.env', '.gitignore', '.gitattributes', '.dockerignore',
+  '.editorconfig', '.npmrc', '.yarnrc', '.nvmrc'
+])
 const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'dist', SELF_DIR])
 
 const app = express()
@@ -34,8 +47,34 @@ function toRelative(abs) {
  */
 function safeJoin(relPath) {
   const abs = path.resolve(ROOT, relPath || '.')
-  if (!abs.startsWith(ROOT)) throw new Error('Path traversal blocked')
+  const relative = path.relative(ROOT, abs)
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('Path traversal blocked')
+  }
   return abs
+}
+
+/**
+ * 只允许已知文本文件，避免把 jar、压缩包等二进制文件读进浏览器。
+ */
+function isSupportedFile(fileName) {
+  const lowerName = fileName.toLowerCase()
+  return ALLOWED_NAMES.has(lowerName) || ALLOWED_EXT.has(path.extname(lowerName))
+}
+
+/**
+ * 隐藏依赖、构建产物和点号目录，但允许查看 .env.example 等受支持的点号文件。
+ */
+function shouldIgnoreWatchedPath(watchedPath) {
+  const relative = path.relative(ROOT, watchedPath)
+  if (!relative || relative === '.') return false
+
+  const segments = relative.split(path.sep)
+  if (segments.some(segment => IGNORED_DIRS.has(segment))) return true
+  if (segments.slice(0, -1).some(segment => segment.startsWith('.'))) return true
+
+  const base = segments.at(-1)
+  return base.startsWith('.') && !isSupportedFile(base)
 }
 
 /**
@@ -58,13 +97,10 @@ async function readTree(dir = ROOT) {
   const children = []
   for (const e of entries) {
     if (IGNORED_DIRS.has(e.name)) continue
-    if (e.name.startsWith('.')) continue
+    if (e.isDirectory() && e.name.startsWith('.')) continue
+    if (e.isFile() && !isSupportedFile(e.name)) continue
     const child = await readTree(path.join(dir, e.name))
     if (!child) continue
-    if (child.type === 'file') {
-      const ext = path.extname(e.name).toLowerCase()
-      if (!ALLOWED_EXT.has(ext)) continue
-    }
     children.push(child)
   }
   // 文件夹优先 + 按名排序
@@ -73,7 +109,7 @@ async function readTree(dir = ROOT) {
     return a.name.localeCompare(b.name, 'zh-CN')
   })
   return {
-    name: dir === ROOT ? 'frontend' : name,
+    name: dir === ROOT ? path.basename(ROOT) : name,
     path: toRelative(dir),
     type: 'dir',
     children
@@ -97,7 +133,9 @@ app.get('/api/file', async (req, res) => {
     const stat = await fs.stat(abs)
     if (!stat.isFile()) return res.status(400).json({ error: 'not a file' })
     const ext = path.extname(abs).toLowerCase()
-    if (!ALLOWED_EXT.has(ext)) return res.status(403).json({ error: 'ext not allowed' })
+    if (!isSupportedFile(path.basename(abs))) {
+      return res.status(403).json({ error: 'file type not allowed' })
+    }
     const content = await fs.readFile(abs, 'utf-8')
     res.json({ path: rel, ext, content, size: stat.size, mtime: stat.mtimeMs })
   } catch (err) {
@@ -116,17 +154,12 @@ function broadcast(msg) {
 }
 
 wss.on('connection', ws => {
-  ws.send(JSON.stringify({ type: 'hello', root: 'frontend' }))
+  ws.send(JSON.stringify({ type: 'hello', root: path.basename(ROOT) }))
 })
 
 // 监听文件变化
 const watcher = chokidar.watch(ROOT, {
-  ignored: (p) => {
-    const base = path.basename(p)
-    if (IGNORED_DIRS.has(base)) return true
-    if (base.startsWith('.')) return true
-    return false
-  },
+  ignored: shouldIgnoreWatchedPath,
   ignoreInitial: true,
   persistent: true,
   awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 100 }
@@ -135,10 +168,7 @@ const watcher = chokidar.watch(ROOT, {
 const notify = (type) => (abs) => {
   const ext = path.extname(abs).toLowerCase()
   // 目录变更也通知（重新拉树）
-  let isFile = true
-  try {
-    isFile = !!ext && ALLOWED_EXT.has(ext)
-  } catch {}
+  const isFile = isSupportedFile(path.basename(abs))
   broadcast({
     type,
     path: toRelative(abs),
