@@ -5,7 +5,7 @@
     :style="{ width: sidebarWidth + 'px' }"
   >
     <div class="sidebar-header">
-      <span class="sidebar-title" :title="tree?.name">📁 {{ tree?.name || 'loading...' }}</span>
+      <span class="sidebar-title" title="知识库">📁 知识库</span>
       <span class="ws-status" :class="wsState" :title="wsLabel">
         <span class="dot"></span>
       </span>
@@ -84,6 +84,8 @@ const wsState = ref('connecting')   // connecting | connected | error
 const wsLabel = ref('连接中')
 const fileTreeRef = ref(null)
 const treeQuery = ref('')
+const staticMode = import.meta.env.MODE === 'pages'
+const staticDataBase = `${import.meta.env.BASE_URL}knowledge-data/`
 
 const SIDEBAR_WIDTH_KEY = 'mdviewer:sidebar-width'
 const SIDEBAR_MIN_WIDTH = 260
@@ -101,7 +103,7 @@ const THEME_KEY = 'mdviewer:theme'
 function getInitialTheme() {
   const saved = localStorage.getItem(THEME_KEY)
   if (saved === 'dark' || saved === 'light') return saved
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'dark'
 }
 const theme = ref(getInitialTheme())
 provide('theme', theme)
@@ -121,7 +123,9 @@ let treeReloadTimer = null
 
 async function loadTree() {
   try {
-    const res = await fetch('/api/tree')
+    const treeUrl = staticMode ? `${staticDataBase}tree.json` : '/api/tree'
+    const res = await fetch(treeUrl)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     tree.value = await res.json()
   } catch (e) {
     console.error(e)
@@ -130,7 +134,10 @@ async function loadTree() {
 
 async function openFile(node) {
   try {
-    const res = await fetch('/api/file?path=' + encodeURIComponent(node.path))
+    const fileUrl = staticMode
+      ? `${staticDataBase}files/${node.dataFile}`
+      : '/api/file?path=' + encodeURIComponent(node.path)
+    const res = await fetch(fileUrl)
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error(err.error || res.statusText)
@@ -181,6 +188,12 @@ function flashChanged(path) {
 }
 
 function connectWs() {
+  if (staticMode) {
+    wsState.value = 'connected'
+    wsLabel.value = '静态站点'
+    return
+  }
+
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   ws = new WebSocket(`${proto}://${location.host}/ws`)
 

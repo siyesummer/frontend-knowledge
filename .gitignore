@@ -8,6 +8,7 @@ build/
 .output/
 .next/
 .nuxt/
+md-viewer/src/public/knowledge-data/
 
 # Logs
 *.log
@@ -36,5 +37,6 @@ Thumbs.db
 
 # Other
 nginx.conf
+!Docker专题/正式部署/siye-stack/edge/nginx/nginx.conf
 *.gz
 *.jar

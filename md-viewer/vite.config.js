@@ -6,26 +6,31 @@ import path from 'path'
 const apiPort = Number(process.env.MD_VIEWER_PORT || 3001)
 const apiTarget = `http://localhost:${apiPort}`
 
-export default defineConfig({
-  plugins: [
-    vue(),
-    // ★ 自动处理 Monaco 的 worker 文件，JS/TS 等语法高亮靠这个
-    (monacoEditorPlugin.default || monacoEditorPlugin)({
-      languageWorkers: ['editorWorkerService', 'typescript', 'json', 'css', 'html']
-    })
-  ],
-  root: 'src',
-  publicDir: false,
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src')
-    }
-  },
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': apiTarget,
-      '/ws': { target: apiTarget, ws: true }
+export default defineConfig(({ mode }) => {
+  const pagesMode = mode === 'pages'
+
+  return {
+    base: pagesMode ? (process.env.VITE_BASE_PATH || '/frontend-knowledge/') : '/',
+    plugins: [
+      vue(),
+      // 自动处理 Monaco 的 worker 文件，JS/TS 等语法高亮靠这个
+      (monacoEditorPlugin.default || monacoEditorPlugin)({
+        languageWorkers: ['editorWorkerService', 'typescript', 'json', 'css', 'html']
+      })
+    ],
+    root: 'src',
+    publicDir: pagesMode ? 'public' : false,
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src')
+      }
+    },
+    server: {
+      port: 5173,
+      proxy: {
+        '/api': apiTarget,
+        '/ws': { target: apiTarget, ws: true }
+      }
     }
   }
 })

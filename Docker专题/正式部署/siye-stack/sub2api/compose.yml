@@ -1,0 +1,166 @@
+name: siye-production-sub2api
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE is required}
+    container_name: siye-prod-sub2api-postgres
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      PGDATA: /var/lib/postgresql/data
+      TZ: ${TZ:?TZ is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging: *default-logging
+    networks:
+      - data-net
+
+  redis:
+    image: ${REDIS_IMAGE:?REDIS_IMAGE is required}
+    container_name: siye-prod-sub2api-redis
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server
+        --save 60 1
+        --appendonly yes
+        --appendfsync everysec
+        --requirepass "$${REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      TZ: ${TZ:?TZ is required}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *default-logging
+    networks:
+      - data-net
+
+  sub2api:
+    image: ${SUB2API_IMAGE:?SUB2API_IMAGE is required}
+    container_name: siye-prod-sub2api
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      AUTO_SETUP: "true"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "8080"
+      SERVER_MODE: ${SUB2API_SERVER_MODE:?SUB2API_SERVER_MODE is required}
+      RUN_MODE: ${SUB2API_RUN_MODE:?SUB2API_RUN_MODE is required}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DATABASE_DBNAME: ${POSTGRES_DB:?POSTGRES_DB is required}
+      DATABASE_SSLMODE: disable
+      DATABASE_MAX_OPEN_CONNS: ${DATABASE_MAX_OPEN_CONNS:?DATABASE_MAX_OPEN_CONNS is required}
+      DATABASE_MAX_IDLE_CONNS: ${DATABASE_MAX_IDLE_CONNS:?DATABASE_MAX_IDLE_CONNS is required}
+      DATABASE_CONN_MAX_LIFETIME_MINUTES: ${DATABASE_CONN_MAX_LIFETIME_MINUTES:?DATABASE_CONN_MAX_LIFETIME_MINUTES is required}
+      DATABASE_CONN_MAX_IDLE_TIME_MINUTES: ${DATABASE_CONN_MAX_IDLE_TIME_MINUTES:?DATABASE_CONN_MAX_IDLE_TIME_MINUTES is required}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_DB: ${REDIS_DB:?REDIS_DB is required}
+      REDIS_POOL_SIZE: ${REDIS_POOL_SIZE:?REDIS_POOL_SIZE is required}
+      REDIS_MIN_IDLE_CONNS: ${REDIS_MIN_IDLE_CONNS:?REDIS_MIN_IDLE_CONNS is required}
+      REDIS_ENABLE_TLS: ${REDIS_ENABLE_TLS:?REDIS_ENABLE_TLS is required}
+      ADMIN_EMAIL: ${SUB2API_ADMIN_EMAIL:?SUB2API_ADMIN_EMAIL is required}
+      ADMIN_PASSWORD: ${SUB2API_ADMIN_PASSWORD:?SUB2API_ADMIN_PASSWORD is required}
+      JWT_SECRET: ${SUB2API_JWT_SECRET:?SUB2API_JWT_SECRET is required}
+      JWT_EXPIRE_HOUR: ${SUB2API_JWT_EXPIRE_HOUR:?SUB2API_JWT_EXPIRE_HOUR is required}
+      TOTP_ENCRYPTION_KEY: ${SUB2API_TOTP_ENCRYPTION_KEY:?SUB2API_TOTP_ENCRYPTION_KEY is required}
+      SETUP_MIGRATION_TIMEOUT_SECONDS: ${SUB2API_SETUP_MIGRATION_TIMEOUT_SECONDS:?SUB2API_SETUP_MIGRATION_TIMEOUT_SECONDS is required}
+      TZ: ${TZ:?TZ is required}
+      GEMINI_OAUTH_CLIENT_ID: ${SUB2API_GEMINI_OAUTH_CLIENT_ID}
+      GEMINI_OAUTH_CLIENT_SECRET: ${SUB2API_GEMINI_OAUTH_CLIENT_SECRET}
+      GEMINI_OAUTH_SCOPES: ${SUB2API_GEMINI_OAUTH_SCOPES}
+      GEMINI_QUOTA_POLICY: ${SUB2API_GEMINI_QUOTA_POLICY}
+      GEMINI_CLI_OAUTH_CLIENT_SECRET: ${SUB2API_GEMINI_CLI_OAUTH_CLIENT_SECRET}
+      ANTIGRAVITY_OAUTH_CLIENT_SECRET: ${SUB2API_ANTIGRAVITY_OAUTH_CLIENT_SECRET}
+      ANTIGRAVITY_USER_AGENT_VERSION: ${SUB2API_ANTIGRAVITY_USER_AGENT_VERSION}
+      SECURITY_URL_ALLOWLIST_ENABLED: ${SUB2API_SECURITY_URL_ALLOWLIST_ENABLED:?SUB2API_SECURITY_URL_ALLOWLIST_ENABLED is required}
+      SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP: ${SUB2API_SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:?SUB2API_SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP is required}
+      SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS: ${SUB2API_SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:?SUB2API_SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS is required}
+      SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS: ${SUB2API_SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS}
+      UPDATE_PROXY_URL: ${SUB2API_UPDATE_PROXY_URL}
+      GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT: ${SUB2API_GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT:?SUB2API_GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT is required}
+      GATEWAY_OPENAI_HTTP2_ENABLED: ${SUB2API_GATEWAY_OPENAI_HTTP2_ENABLED:?SUB2API_GATEWAY_OPENAI_HTTP2_ENABLED is required}
+      GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1: ${SUB2API_GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1:?SUB2API_GATEWAY_OPENAI_HTTP2_ALLOW_PROXY_FALLBACK_TO_HTTP1 is required}
+      GATEWAY_OPENAI_HTTP2_FALLBACK_ERROR_THRESHOLD: ${SUB2API_GATEWAY_OPENAI_HTTP2_FALLBACK_ERROR_THRESHOLD:?SUB2API_GATEWAY_OPENAI_HTTP2_FALLBACK_ERROR_THRESHOLD is required}
+      GATEWAY_OPENAI_HTTP2_FALLBACK_WINDOW_SECONDS: ${SUB2API_GATEWAY_OPENAI_HTTP2_FALLBACK_WINDOW_SECONDS:?SUB2API_GATEWAY_OPENAI_HTTP2_FALLBACK_WINDOW_SECONDS is required}
+      GATEWAY_OPENAI_HTTP2_FALLBACK_TTL_SECONDS: ${SUB2API_GATEWAY_OPENAI_HTTP2_FALLBACK_TTL_SECONDS:?SUB2API_GATEWAY_OPENAI_HTTP2_FALLBACK_TTL_SECONDS is required}
+      GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT: ${SUB2API_GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT:?SUB2API_GATEWAY_IMAGE_STREAM_DATA_INTERVAL_TIMEOUT is required}
+      GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL: ${SUB2API_GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL:?SUB2API_GATEWAY_IMAGE_STREAM_KEEPALIVE_INTERVAL is required}
+      GATEWAY_IMAGE_CONCURRENCY_ENABLED: ${SUB2API_GATEWAY_IMAGE_CONCURRENCY_ENABLED:?SUB2API_GATEWAY_IMAGE_CONCURRENCY_ENABLED is required}
+      GATEWAY_IMAGE_CONCURRENCY_MAX_CONCURRENT_REQUESTS: ${SUB2API_GATEWAY_IMAGE_CONCURRENCY_MAX_CONCURRENT_REQUESTS:?SUB2API_GATEWAY_IMAGE_CONCURRENCY_MAX_CONCURRENT_REQUESTS is required}
+      GATEWAY_IMAGE_CONCURRENCY_OVERFLOW_MODE: ${SUB2API_GATEWAY_IMAGE_CONCURRENCY_OVERFLOW_MODE:?SUB2API_GATEWAY_IMAGE_CONCURRENCY_OVERFLOW_MODE is required}
+      GATEWAY_IMAGE_CONCURRENCY_WAIT_TIMEOUT_SECONDS: ${SUB2API_GATEWAY_IMAGE_CONCURRENCY_WAIT_TIMEOUT_SECONDS:?SUB2API_GATEWAY_IMAGE_CONCURRENCY_WAIT_TIMEOUT_SECONDS is required}
+      GATEWAY_IMAGE_CONCURRENCY_MAX_WAITING_REQUESTS: ${SUB2API_GATEWAY_IMAGE_CONCURRENCY_MAX_WAITING_REQUESTS:?SUB2API_GATEWAY_IMAGE_CONCURRENCY_MAX_WAITING_REQUESTS is required}
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+    networks:
+      - edge-net
+      - data-net
+
+volumes:
+  app-data:
+    name: siye-prod-sub2api-app-data
+  postgres-data:
+    name: siye-prod-sub2api-postgres-data
+  redis-data:
+    name: siye-prod-sub2api-redis-data
+
+networks:
+  edge-net:
+    name: siye-prod-edge-net
+    external: true
+  data-net:
+    name: siye-prod-sub2api-data-net
+    driver: bridge
+    internal: true
+

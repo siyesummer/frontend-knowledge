@@ -8,9 +8,11 @@
 
 ## md-viewer
 
-可以启动在浏览器查看所有md、js等类型文件
+可以在本地启动服务，通过浏览器查看仓库中的 Markdown、JavaScript 等文本资料；也可以通过 GitHub Actions 手动构建并发布为 GitHub Pages 静态知识库。
 
 > 除了有文件目录还有章节目录方便查看
+
+本地启动和 GitHub Pages 发布步骤见 [md-viewer/README.md](./md-viewer/README.md)。Pages 发布工作流只支持手动触发，不会在提交代码时自动运行。
 
 ## AGENTS.md
 

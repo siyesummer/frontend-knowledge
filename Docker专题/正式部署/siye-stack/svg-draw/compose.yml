@@ -1,0 +1,26 @@
+name: siye-production-svg-draw
+
+services:
+  svg-draw:
+    image: ${SVG_DRAW_IMAGE:?SVG_DRAW_IMAGE is required}
+    container_name: siye-prod-svg-draw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    networks:
+      - edge-net
+
+networks:
+  edge-net:
+    name: siye-prod-edge-net
+    external: true
+

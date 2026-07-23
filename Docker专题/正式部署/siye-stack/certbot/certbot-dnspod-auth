@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="${DNSPOD_ENV_FILE:-/etc/letsencrypt/dnspod.env}"
+STATE_DIR="/var/lib/letsencrypt/dnspod"
+SUB_DOMAIN="_acme-challenge"
+
+source "$ENV_FILE"
+
+: "${DNSPOD_LOGIN_TOKEN:?DNSPOD_LOGIN_TOKEN is required}"
+: "${DNSPOD_DOMAIN:?DNSPOD_DOMAIN is required}"
+: "${DNSPOD_PROPAGATION_SECONDS:=120}"
+: "${CERTBOT_DOMAIN:?CERTBOT_DOMAIN is required}"
+: "${CERTBOT_VALIDATION:?CERTBOT_VALIDATION is required}"
+
+case "$CERTBOT_DOMAIN" in
+  "$DNSPOD_DOMAIN"|"*.$DNSPOD_DOMAIN") ;;
+  *)
+    echo "[ERROR] Refusing DNS change for unexpected domain: $CERTBOT_DOMAIN" >&2
+    exit 1
+    ;;
+esac
+
+install -o root -g root -m 700 -d "$STATE_DIR"
+
+response="$(
+  curl --fail --silent --show-error \
+    --request POST \
+    --data-urlencode "login_token=$DNSPOD_LOGIN_TOKEN" \
+    --data-urlencode "format=json" \
+    --data-urlencode "domain=$DNSPOD_DOMAIN" \
+    --data-urlencode "sub_domain=$SUB_DOMAIN" \
+    --data-urlencode "record_type=TXT" \
+    --data-urlencode "record_line=默认" \
+    --data-urlencode "value=$CERTBOT_VALIDATION" \
+    "https://dnsapi.cn/Record.Create"
+)"
+
+record_id="$(
+  printf '%s' "$response" |
+    python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+status = payload.get("status", {})
+code = str(status.get("code", ""))
+message = status.get("message", "")
+
+if code != "1":
+    print(
+        f"DNSPod Record.Create failed: code={code} message={message}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+record_id = payload.get("record", {}).get("id")
+if not record_id:
+    print("DNSPod Record.Create returned no record id", file=sys.stderr)
+    raise SystemExit(1)
+
+print(record_id)
+'
+)"
+
+state_key="$(
+  printf '%s' "$CERTBOT_VALIDATION" |
+    sha256sum |
+    awk '{print $1}'
+)"
+state_file="$STATE_DIR/$state_key.record-id"
+
+printf '%s\n' "$record_id" > "$state_file"
+chmod 600 "$state_file"
+
+echo "[OK] DNSPod TXT created: record_id=$record_id domain=$CERTBOT_DOMAIN"
+
+if [ "${CERTBOT_REMAINING_CHALLENGES:-0}" -gt 0 ]; then
+  echo "[INFO] More challenges remain; defer propagation wait"
+  exit 0
+fi
+
+echo "[INFO] Waiting ${DNSPOD_PROPAGATION_SECONDS}s for DNS propagation"
+sleep "$DNSPOD_PROPAGATION_SECONDS"

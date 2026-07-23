@@ -1,0 +1,7 @@
+services:
+  edge-nginx:
+    ports:
+      - ${EDGE_HTTPS_BIND_ADDRESS:?EDGE_HTTPS_BIND_ADDRESS is required}:${EDGE_HTTPS_HOST_PORT:?EDGE_HTTPS_HOST_PORT is required}:443
+    volumes:
+      - ${TLS_LETSENCRYPT_DIR:?TLS_LETSENCRYPT_DIR is required}:/etc/letsencrypt:ro
+

@@ -1,10 +1,10 @@
 # MD Viewer
 
-一个本地小工具：左侧展示 `frontend-knowledge` 目录树，右侧查看 Markdown、代码、脚本及部署配置等文本文件，并在文件被修改时**自动刷新**。
+一个本地知识库查看工具：左侧直接展示仓库内的知识分类，右侧查看 Markdown、代码、脚本及部署配置等文本文件，并在文件被修改时**自动刷新**。
 
 ## ✨ 特性
 
-- 📁 **左侧文件树**：递归展示 `frontend/` 下所有支持的文件
+- 📁 **左侧文件树**：递归展示仓库内所有支持的文件
 - 🔎 **快速定位**：支持文件/目录搜索、全部收起和定位当前文件
 - ↔️ **可调侧栏**：拖拽调整文件树宽度并自动记忆，也可临时隐藏侧栏
 - 📝 **Markdown 渲染**：`markdown-it` + `highlight.js` 代码高亮（github-dark 主题）
@@ -26,7 +26,7 @@
 > 要求：Node.js ≥ 18，npm ≥ 9
 
 ```bash
-cd "E:\本地项目\frontend-knowledge\md-viewer"
+cd "<仓库目录>\md-viewer"
 npm install
 npm run dev
 ```
@@ -44,12 +44,38 @@ npm run dev:server   # 只跑后端
 npm run dev:web      # 只跑前端（需要后端在跑）
 ```
 
+## GitHub Pages 发布
+
+仓库提供 `.github/workflows/deploy-pages.yml`，只支持在 GitHub Actions 页面手动触发，不会在提交代码时自动发布。
+
+首次发布前，在 GitHub 仓库中打开 `Settings -> Pages`，将 `Build and deployment` 的 `Source` 设置为 `GitHub Actions`。之后按以下步骤发布：
+
+1. 打开仓库的 `Actions` 页面。
+2. 选择 `Deploy knowledge base to GitHub Pages`。
+3. 点击 `Run workflow`，选择需要发布的分支后确认运行。
+4. 等待 `build` 和 `deploy` 两个任务完成，通过任务输出或仓库 `Pages` 设置页打开站点。
+
+Pages 不运行 Express 和 WebSocket 服务。工作流会在构建时生成静态文件树和文件内容，页面仍可浏览、搜索和渲染知识资料，但不具备本地模式的文件实时刷新能力。
+
+静态数据只读取 Git 已跟踪文件，以及未被 `.gitignore` 忽略的新文件；被忽略的本地 `.env`、构建产物和其他敏感配置不会进入 Pages 制品。发布前仍需检查准备提交的文件，不能把密钥、密码、Token 或真实服务器地址提交到仓库。
+
+如需在本地检查 Pages 构建结果：
+
+```bash
+cd "<仓库目录>/md-viewer"
+npm ci
+npm run build:pages
+npm run preview
+```
+
 ## 📂 工程结构
 
 ```
 md-viewer/
 ├── package.json
 ├── vite.config.js
+├── scripts/
+│   └── generate-static-data.mjs # 生成 Pages 静态知识数据
 ├── server/
 │   └── index.js              # Express + WS + chokidar
 └── src/
@@ -70,7 +96,7 @@ md-viewer/
 服务端常量在 `server/index.js` 顶部：
 
 ```js
-const ROOT = path.resolve(__dirname, '..', '..')   // 监听目录（默认是 frontend-knowledge）
+const ROOT = path.resolve(__dirname, '..', '..')   // 监听目录（默认是当前知识库仓库）
 const PORT = Number(process.env.MD_VIEWER_PORT || 3001) // 后端端口，可临时覆盖
 const ALLOWED_EXT = new Set([/* 支持的文本文件扩展名 */])
 const ALLOWED_NAMES = new Set([/* Dockerfile、.env、.gitignore 等特殊文件名 */])
@@ -92,7 +118,8 @@ npm run dev
 
 - 后端用 `safeJoin` 防止路径穿越（`../../etc/passwd` 之类）
 - 只允许读取白名单文本类型和明确的特殊文件名，二进制文件不会出现在文件树中
-- 仅本地访问，**不要部署到公网**
+- Express 服务包含本地文件读取和实时监听能力，只用于本地访问，**不要直接部署到公网**
+- 公网页面只使用 GitHub Actions 生成的静态数据，不部署 Express 和 WebSocket 服务
 
 ## 🔍 同步原理
 

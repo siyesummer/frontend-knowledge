@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 监听的根目录 = md-viewer 的上一级（即 frontend 目录）
+// 监听的根目录 = md-viewer 的上一级（即当前知识库仓库）
 const ROOT = path.resolve(__dirname, '..', '..')
 const SELF_DIR = path.basename(path.resolve(__dirname, '..'))  // 'md-viewer'
 

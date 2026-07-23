@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONTAINER="siye-prod-edge-nginx"
+EXPECTED_LINEAGE="/etc/letsencrypt/live/siyes-production"
+
+if [ -n "${RENEWED_LINEAGE:-}" ] && [ "$RENEWED_LINEAGE" != "$EXPECTED_LINEAGE" ]; then
+  echo "[INFO] Certificate is not siyes-production; skip edge reload"
+  exit 0
+fi
+
+running="$(
+  /usr/bin/docker inspect \
+    -f '{{.State.Running}}' \
+    "$CONTAINER" \
+    2>/dev/null ||
+    true
+)"
+
+if [ "$running" != "true" ]; then
+  echo "[INFO] $CONTAINER is not running; skip reload"
+  exit 0
+fi
+
+/usr/bin/docker exec "$CONTAINER" nginx -t
+/usr/bin/docker exec "$CONTAINER" nginx -s reload
+
+echo "[OK] $CONTAINER reloaded after certificate renewal"

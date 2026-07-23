@@ -10,9 +10,9 @@
 
 当前讲解基于这套实际文件：
 
-- [docker-compose.yml](E:/github项目/frontend-knowledge/Docker专题/docker-labs/linux-server-mysql/docker-compose.yml)
-- [Dockerfile](E:/github项目/frontend-knowledge/Docker专题/docker-labs/linux-server-mysql/Dockerfile)
-- [DOCKER_LAB_STEPS.md](E:/github项目/frontend-knowledge/Docker专题/docker-labs/linux-server-mysql/DOCKER_LAB_STEPS.md)
+- [docker-compose.yml](E:/本地项目/frontend-knowledge/Docker专题/Docker演练/linux-server-mysql/docker-compose.yml)
+- [Dockerfile](E:/本地项目/frontend-knowledge/Docker专题/Docker演练/linux-server-mysql/Dockerfile)
+- [Docker演练步骤.md](E:/本地项目/frontend-knowledge/Docker专题/Docker演练/linux-server-mysql/Docker演练步骤.md)
 
 ## 一、先记住两句话
 
@@ -125,14 +125,14 @@
 
 ## 四、这条命令在你当前项目里实际做了什么
 
-按当前 [docker-compose.yml](E:/github项目/frontend-knowledge/Docker专题/docker-labs/linux-server-mysql/docker-compose.yml)，它大致按这个顺序执行：
+按当前 [docker-compose.yml](E:/本地项目/frontend-knowledge/Docker专题/Docker演练/linux-server-mysql/docker-compose.yml)，它大致按这个顺序执行：
 
 1. 读取 `docker-compose.yml`
 2. 读取 `.env`，把 `${MYSQL_ROOT_PASSWORD}` 这类变量替换成真实值
 3. 检查 `mysql` 服务配置
 4. 检查 `linux-server` 服务配置
 5. 如果本地没有 `mysql:8.0.39`，就先拉取官方 MySQL 镜像
-6. 因为 `linux-server` 有 `build:`，所以读取 [Dockerfile](E:/github项目/frontend-knowledge/Docker专题/docker-labs/linux-server-mysql/Dockerfile)
+6. 因为 `linux-server` 有 `build:`，所以读取 [Dockerfile](E:/本地项目/frontend-knowledge/Docker专题/Docker演练/linux-server-mysql/Dockerfile)
 7. 用当前目录 `context: .` 作为构建上下文，把 `jar` 打进镜像
 8. 创建默认网络，让 `linux-server` 能用服务名 `mysql` 访问数据库
 9. 创建数据卷 `mysql_data`

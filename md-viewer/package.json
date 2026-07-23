@@ -8,6 +8,7 @@
     "dev:server": "node server/index.js",
     "dev:web": "vite",
     "build": "vite build",
+    "build:pages": "node scripts/generate-static-data.mjs && vite build --mode pages",
     "preview": "vite preview"
   },
   "dependencies": {

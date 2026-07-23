@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="SIYES，发现音乐、知识与实用服务。">
+  <meta name="theme-color" content="#f8f7ff">
+  <title>SIYES | 发现更多有趣内容</title>
+  <style>
+    :root{color-scheme:light;--text:#29243b;--muted:#706b80;--line:rgba(74,63,105,.11);--max:1160px}
+    *{box-sizing:border-box}html{min-width:320px;background:#f8f7ff}
+    body{min-height:100vh;margin:0;color:var(--text);background:#f7f7fb;font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+    a{color:inherit}.shell{min-height:100vh;overflow:hidden}main,footer{width:min(calc(100% - 48px),var(--max));margin:auto}main{padding:86px 0 64px}
+    .intro{max-width:760px;margin:0 auto 58px;text-align:center}
+    h1{margin:0;font-size:68px;font-weight:820;line-height:1.12;letter-spacing:0}h1 span{color:#8a65dd}.intro-copy{max-width:620px;margin:24px auto 0;color:var(--muted);font-size:17px;line-height:1.85}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}.card{display:flex;min-height:420px;overflow:hidden;flex-direction:column;background:#fff;border:1px solid #e7e5ee;border-radius:8px;box-shadow:0 20px 55px #3f365d17;text-decoration:none;transition:transform .18s ease,box-shadow .18s ease}.card:hover{box-shadow:0 26px 65px #3f365d24;transform:translateY(-7px)}.card:focus-visible{outline:4px solid #6c5ce74d;outline-offset:4px}
+    .visual{position:relative;display:grid;height:205px;overflow:hidden;place-items:center}.music .visual{background:#ff8f8d}.knowledge .visual{background:#65c9c5}.sub2api .visual{background:#8583e8}
+    .icon{position:relative;z-index:1;width:116px;height:116px;padding:23px;color:#fff;background:#ffffff2e;border:1px solid #ffffff80;border-radius:18px;filter:drop-shadow(0 16px 20px #3b2d5633);transform:rotate(-3deg)}.knowledge .icon{transform:rotate(3deg)}.content{display:flex;flex:1;flex-direction:column;padding:28px}.card h2{margin:0;font-size:27px;line-height:1.2;letter-spacing:0}.card p{margin:13px 0 24px;color:var(--muted);font-size:14px;line-height:1.75}
+    .action{display:inline-flex;gap:8px;align-items:center;align-self:flex-start;margin-top:auto;font-size:14px;font-weight:720}.action b{display:grid;width:28px;height:28px;place-items:center;border-radius:50%;transition:transform .18s ease}.card:hover .action b{transform:translateX(4px)}.music .action{color:#d95e57}.music .action b{background:#fff0ed}.knowledge .action{color:#278b98}.knowledge .action b{background:#e5f8f6}.sub2api .action{color:#6564c8}.sub2api .action b{background:#efefff}
+    footer{display:flex;align-items:center;justify-content:center;min-height:88px;color:#827d91;border-top:1px solid var(--line);font-size:12px}footer p{margin:0}footer span{margin:0 12px;color:#c0bbc9}.icp{text-underline-offset:4px}.icp:hover{color:#5e5870}
+    @media(max-width:860px){.grid{grid-template-columns:1fr}.card{display:grid;grid-template-columns:minmax(220px,38%) 1fr;min-height:260px}.visual{height:100%;min-height:260px}}
+    @media(max-width:620px){main,footer{width:min(calc(100% - 32px),var(--max))}main{padding:54px 0 44px}.intro{margin-bottom:39px;text-align:left}h1{font-size:44px;letter-spacing:0}.intro-copy{margin-top:18px;font-size:15px}.grid{gap:18px}.card{display:flex;min-height:0;border-radius:8px}.visual{height:176px;min-height:0}.icon{width:98px;height:98px;padding:20px;border-radius:16px}.content{min-height:213px;padding:24px}footer{flex-wrap:wrap;gap:8px;padding:24px 0;text-align:center}footer span{display:none}footer p,footer a{width:100%}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important}}
+  </style>
+</head>
+<body><div class="shell"><main>
+  <section class="intro" aria-labelledby="title"><h1 id="title">SIYES</h1><p class="intro-copy">音乐、知识和实用工具，都放在这里。选择一个入口，去看看。</p></section>
+  <section class="grid" aria-label="站点入口">
+    <a class="card music" href="https://music.siyes.cn" aria-label="进入 SIYES 音乐空间"><div class="visual"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M24 46V16l27-6v29" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><ellipse cx="16" cy="48" rx="9" ry="7" fill="currentColor"/><ellipse cx="43" cy="41" rx="9" ry="7" fill="currentColor"/></svg></div><div class="content"><h2>音乐空间</h2><p>搜索喜欢的音乐，收藏歌单，在熟悉的旋律里放松一下。</p><span class="action">开始听歌 <b aria-hidden="true">→</b></span></div></a>
+    <a class="card knowledge" href="https://knowledge.siyes.cn" aria-label="进入 SIYES 知识库"><div class="visual"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M10 13h18c5 0 8 3 8 8v31c0-5-3-8-8-8H10V13Zm44 0H36v39c0-5 3-8 8-8h10V13Z" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linejoin="round"/><path d="M18 23h10M18 31h10M44 23h3" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></div><div class="content"><h2>知识库</h2><p>查看前端、后端和部署笔记，把每一次学习都积累下来。</p><span class="action">去逛逛 <b aria-hidden="true">→</b></span></div></a>
+    <a class="card sub2api" href="https://sub2api.siyes.cn" aria-label="进入 Sub2API 服务"><div class="visual"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="9" y="11" width="46" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="4.5"/><rect x="9" y="35" width="46" height="18" rx="6" fill="none" stroke="currentColor" stroke-width="4.5"/><circle cx="19" cy="20" r="3" fill="currentColor"/><circle cx="19" cy="44" r="3" fill="currentColor"/><path d="M29 20h16M29 44h16" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></div><div class="content"><h2>Sub2API</h2><p>集中使用和管理 API 服务，让模型调用变得更简单顺手。</p><span class="action">打开服务 <b aria-hidden="true">→</b></span></div></a>
+  </section>
+</main><footer><p>© 2026 SIYES</p><span aria-hidden="true">·</span><a class="icp" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">闽ICP备17032186号-3</a></footer></div></body>
+</html>
