@@ -1,41 +1,73 @@
-# 前端知识库
+# SIYES 知识库
 
-> 后续更新
+这是一个面向前端开发、全栈学习和 Linux/Docker 实践的资料仓库，用于整理知识点、面试资料、部署记录和可运行的小工具。
 
-学习、面试用
+仓库内容不只限于前端，也包含 Java、Spring Boot、MySQL、Redis、Linux、Nginx、Docker 和 Docker Compose 等工程实践。
 
-每次都到处找资料，所以整理了一下，方便维护
+## 在线入口
+
+| 入口 | 用途 |
+| --- | --- |
+| [siyes.cn](https://siyes.cn) | SIYES 服务导航首页 |
+| [knowledge.siyes.cn](https://knowledge.siyes.cn) | 在线知识库，支持 Markdown、代码和配置文件查看 |
+| [GitHub Pages](https://siyesummer.github.io/frontend-knowledge/#/) | 静态知识库，适合直接浏览和分享 |
+| [music.siyes.cn](https://music.siyes.cn) | SIYES 音乐空间 |
+| [music-api.siyes.cn](https://music-api.siyes.cn) | 音乐搜索和歌单 API |
+| [linux-api.siyes.cn](https://linux-api.siyes.cn) | 聊天消息、历史记录和日志 API |
+| [socket.siyes.cn](https://socket.siyes.cn) | Socket.IO 实时通信入口 |
+| [sub2api.siyes.cn](https://sub2api.siyes.cn) | Sub2API 服务入口 |
+| [draw.siyes.cn](https://draw.siyes.cn) | SVG 绘图工具 |
+
+`siyes.cn` 已完成 ICP 备案和公安联网备案，首页展示备案号并链接到工信部备案查询入口。
+
+## 目录结构
+
+- `前端知识点/`：JavaScript、浏览器、网络、Vue 和工程实践
+- `Promise专题/`：Promise、异步流程和源码分析
+- `Docker专题/`：Docker 基础、Compose 演练、正式部署和回滚记录
+- `Linux部署/`：Linux、Nginx、systemd 和服务器部署资料
+- `md-viewer/`：本地/生产知识库查看器
+- `.github/workflows/`：手动触发的 GitHub Pages 发布 Workflow
 
 ## md-viewer
 
-可以在本地启动服务，通过浏览器查看仓库中的 Markdown、JavaScript 等文本资料；也可以通过 GitHub Actions 手动构建并发布为 GitHub Pages 静态知识库。
+`md-viewer` 是一个 Vue + Express 的 Markdown/代码资料查看器：
 
-> 除了有文件目录还有章节目录方便查看
+- 本地开发：Vite 提供 `5173` 页面，Node 服务提供 `3001` API 和 WebSocket
+- 生产部署：单个 Docker 容器由 Express 同时提供构建后的前端、`/api/*`、`/ws` 和 `/health`
+- 服务器通过 Git 工作副本维护资料，资料更新后执行 `git pull --ff-only` 即可被只读挂载目录看到
+- Monaco 代码查看器按需加载，避免阻塞知识库首页首屏
+- GitHub Pages 使用静态模式生成知识树和文件 JSON，不运行 Express 或 WebSocket
 
-本地启动和 GitHub Pages 发布步骤见 [md-viewer/README.md](./md-viewer/README.md)。Pages 发布工作流只支持手动触发，不会在提交代码时自动运行。
+本地启动：
 
-## AGENTS.md
+```bash
+cd md-viewer
+npm install
+npm run dev
+```
 
-我是前端开发，这个项目是用来做资料存储的，用于学习巩固也可以用于面试。
-其中md-viewer子项目是用于本地启动服务查看md文件。
-其余md、js等文件就是资料，后续有关前端、后端、运维有用的知识点都可以添加到合适的md、js等文件内。
-现在这个项目内已经有前端相关的知识积累，后续可以继续添加。
+打开 <http://localhost:5173> 即可查看本地资料。
 
-我现在正在转向全栈开发工程师，除了继续巩固、加强前端知识。已经学习了JAVA基础知识，现在正在学习部署、运维还有其他除了前端的技能和知识，当然后端相关知识也会继续学习。
+生产部署说明见 [`md-viewer/deploy/README.md`](./md-viewer/deploy/README.md)。
 
-我已经购买了一个腾讯云服务器，安装了 Ubuntu 24.04 LTS系统，已经通过腾讯的OrcaTeam运维软件通过ssh链接使用ubuntu账号登录到这个服务器，ubuntu账号通过sudo可以执行任何命令。
-接下来学习部署和运维的知识，也会继续积累前端相关知识、学习后端相关知识包括但不限于微服务、数据库、redis、Spring、Spring-Boot等。
+## GitHub Pages
 
-关于运维和部署，我之前已经有一个阿里云的服务器，并且申请了siyefun.top这个域名，是windows系统的。在这个系统上我通过 Nginx 部署。包含真实站点信息的完整配置保存在本地 `linux/nginx.conf`，该文件已被忽略，不提交到公开仓库。
+Pages 发布使用仓库根目录的 [`deploy-pages.yml`](./.github/workflows/deploy-pages.yml)，只支持手动触发：
 
-包括：
-1. https://github.com/siyesummer/siyeWorld 项目。
-其中
-- 音乐播放器对应siyefun.top这个域名
-- 网易云音乐对应api.siyefun.top
-- socket服务对用siyefun.top:3030
+1. 打开 GitHub 仓库的 Actions 页面。
+2. 选择 `Deploy knowledge base to GitHub Pages`。
+3. 点击 `Run workflow`。
 
-2. https://github.com/siyesummer/svg-draw 项目
-对应域名为http://svg-draw.siyefun.top/
+提交代码不会自动发布 Pages。资料更新后，需要再次手动运行 Workflow。
 
-现在关于后端部署和运维相关的知识我想要在linux系统上继续学习，因为linux部署和运维才是真实的企业开发环境。
+## 相关项目
+
+- [siyeWorld](https://github.com/siyesummer/siyeWorld)：音乐空间、聊天前端和 easy-chat 工作区
+- [NeteaseCloudMusicApi-private](https://github.com/siyesummer/NeteaseCloudMusicApi-private)：网易云音乐 API
+- [linux-server](https://github.com/siyesummer/linux-server)：Java 日志、聊天消息存储和查询服务
+- [svg-draw](https://github.com/siyesummer/svg-draw)：SVG 绘图工具
+
+## 协作说明
+
+仓库背景、服务器状态、域名矩阵、部署边界和当前验收结果统一记录在 [`AGENTS.md`](./AGENTS.md)。涉及服务器部署、Docker Compose 或服务回滚时，先阅读对应目录的部署说明，再执行操作。

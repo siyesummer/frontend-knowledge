@@ -42,6 +42,14 @@
 - 主站静态目录由 `siye-prod-edge-nginx` 只读挂载，首页文件可在宿主机原子替换后立即生效，不需要重启或重建 Docker edge。
 - 腾讯云 Linux 服务器上的正式访问入口统一使用 `siyes.cn` 及其子域名；`siyefun.top` 域名体系继续作为阿里云 Windows 的前端访问入口和迁移参考。
 
+### 当前正式发布状态
+
+- `siyes.cn` 已完成 ICP 备案和公安联网备案；Docker edge 直接占用公网 `80/443`，宿主机 Nginx 已卸载。
+- `music.siyes.cn`、`music-api.siyes.cn`、`linux-api.siyes.cn`、`socket.siyes.cn`、`sub2api.siyes.cn`、`draw.siyes.cn`、`knowledge.siyes.cn` 及主站别名均已纳入正式 HTTPS 入口，正式 Docker 容器保持 `running/healthy`。
+- 旧 systemd 应用、宿主机 MySQL、旧 Sub2API 和 Docker 学习容器已清理；当前生产服务统一由 Docker Compose 管理。
+- `knowledge.siyes.cn` 已上线 `frontend-knowledge` 生产知识库；`siyes.cn` 已上线单文件 SIYES 服务导航首页。
+- `siyeWorld` 已发布到 GitHub Pages 和阿里云 Windows 的 `siyefun.top`；GitHub Pages 与 `frontend-knowledge` Pages Workflow 均使用手动触发。
+
 ### Linux 当前已落地服务
 
 - `music-api.service`
@@ -72,7 +80,7 @@
 - `linux-server` Java API 目标域名：`linux-api.siyes.cn`
 - Docker Sub2API 服务目标域名：`sub2api.siyes.cn`
 - `easy-chat` Socket 目标域名：`socket.siyes.cn`
-- `frontend-knowledge` 项目预留域名：`knowledge.siyes.cn`
+- `frontend-knowledge` 项目正式域名：`knowledge.siyes.cn`
 - 以上 9 个域名均已添加 `A` 记录并解析到腾讯云服务器；仓库不记录实际解析地址。
 - 腾讯云控制台已确认以上 9 条解析记录状态均为“正常”，记录类型均为 `A`。DNS 正常只代表域名能够解析到服务器，不代表站点、反向代理或 HTTPS 已经完成上线。
 - Linux 正式部署完成后的对外访问矩阵固定为：
@@ -85,7 +93,7 @@
   - `https://sub2api.siyes.cn`：Docker Sub2API 独立服务入口
   - `https://draw.siyes.cn`：`svg-draw` 静态站点入口
   - `https://knowledge.siyes.cn`：`frontend-knowledge` 正式知识库入口，由 `siye-prod-knowledge` 提供页面、目录树 API 和 WebSocket
-- 当前仍处于准生产演练阶段，但 `siyes.cn` 备案已通过；`siye-world:0.0.2` 的演练 `.env.production` 仍编译 `http://203.0.113.10:8090`，音乐 API 基地址追加 `/music-api`，Socket.IO、聊天历史和日志使用 `http://203.0.113.10:8090`。正式 Docker 全量部署完成前不切换正式 HTTPS 域名。
+- 当前正式业务已运行在 Docker Compose 和 Docker edge 上；历史准生产演练中的 `203.0.113.10:8090` 等临时入口仅保留为学习记录，不属于当前正式访问链路。
 - 备案和 HTTPS 完成后的正式前端改为直接访问 `https://music-api.siyes.cn`、`https://socket.siyes.cn`、`https://linux-api.siyes.cn`。届时前端部署服务器只需提供静态文件和 SPA 回退，不需要配置业务接口代理；独立域名也便于其他客户端和服务器直接调用。第三方浏览器站点仍受 CORS 限制，服务端程序调用不受浏览器 CORS 限制。
 - 已使用 DNS-01 成功签发 `/etc/letsencrypt/live/siyes-production/` 通配符证书，覆盖 `siyes.cn` 和 `*.siyes.cn`，因此后续新增普通一层子域名不需要重新签发证书。证书有效期至 2026-10-19；DNSPod API Token 仅保存在服务器 `/etc/letsencrypt/dnspod.env`（`600 root:root`），Certbot manual auth/cleanup Hook 已完成 staging `renew --dry-run`：两条 TXT 自动创建、等待传播、验证并按 record ID 清理，状态目录无残留，正式证书哈希未变化，`certbot.timer` 正常。部署 Hook 已验证可执行 `nginx -t` 并平滑重载 `siye-prod-edge-nginx`。证书与自动续期完成不代表正式域名已经切流。
 - 以上域名统一纳入 HTTPS 迁移范围；每个服务迁移时同步准备 HTTPS 配置、证书和 HTTP 到 HTTPS 跳转
@@ -621,6 +629,7 @@
 - `Docker专题/正式部署/siye-stack/siyes首页/index.html` 已发布到服务器 `/var/www/siyes.cn/index.html`，正式首页标题为 `SIYES`。
 - 首页采用单文件、无外部资源依赖的 C 端导航设计，提供三个卡片入口：`https://music.siyes.cn`、`https://knowledge.siyes.cn`、`https://sub2api.siyes.cn`；用户已确认卡片跳转正常。
 - 首页页脚保留 `闽ICP备17032186号-3`，链接到 `https://beian.miit.gov.cn/`；`siyes.cn` HTTPS 页面已验证正常。
+- 2026-07-23 已在单文件首页中加入内嵌 SVG favicon：深色圆角底、白色 `S` 和三项服务配色识别点，不增加额外静态文件或网络请求；更新后公网首页返回 `HTTP/2 200`，浏览器标签图标显示正常，`siye-prod-edge-nginx` 保持 `running/healthy`。
 - 发布前备份位于 `/opt/siye-production/backups/siyes-home-20260722-214507`。发布使用临时文件加原子替换，未重启或重建 `siye-prod-edge-nginx`。
 - 发布完成后 `/tmp/siyes-home-index.html` 已清理；后续首页更新继续先上传到 `/tmp`、校验三个域名和备案号、备份当前文件，再原子替换并保留回滚目录。
 
@@ -647,5 +656,5 @@
 - Node 服务支持通过 `KNOWLEDGE_ROOT` 指定知识目录，生产环境才启用 Express 静态 `dist`；本地 `npm run dev` 继续由 Vite `5173` 提供页面、Node `3001` 只提供 API 和 WebSocket。真实 `.env` 已从可读取类型中移除。
 - Docker edge 已从 `503 pending` 占位配置切换为 `knowledge:3001` upstream，并通过平滑重载生效。edge 容器内直连 `/health` 返回 `{"status":"ok","service":"frontend-knowledge"}`；公网 `https://knowledge.siyes.cn/health`、`/api/tree` 和首页均返回 `200`，TLS 与 Express 静态页面链路正常。
 - `/ws` 已配置独立长连接代理；浏览器端文件变化实时刷新仍保留为待逐项验收项，不在本次 HTTP/API 上线结果中提前标记完成。
-- 首次加载性能诊断显示，旧版首屏主 JS 约 `4.49 MB`，主要由同步加载的 `monaco-editor` 导致；已改为代码/配置文件打开时按需加载 Monaco，验证构建后的首屏主 JS 约 `1.16 MB`，Monaco 延迟 chunk 约 `3.33 MB`。
-- 已为生产 Express 静态资源增加哈希资源长期缓存，为 Monaco worker 增加短期缓存；Docker edge Nginx 已准备 gzip 配置以压缩 JS、CSS 和 JSON。该优化需要服务器重新构建 `siye-prod-knowledge` 并同步 edge `nginx.conf` 后才会对公网生效。
+- 首次加载性能诊断显示，旧版首屏主 JS 约 `4.49 MB`，主要由同步加载的 `monaco-editor` 导致；现已改为代码/配置文件打开时按需加载 Monaco并完成正式部署。新首屏主 JS 约 `1.16 MB`，Monaco 延迟 chunk 约 `3.33 MB`，浏览器实测首页加载已明显加快。
+- 生产 Express 已为哈希静态资源增加长期缓存、为 Monaco worker 增加短期缓存，Docker edge Nginx gzip 已同步并生效，公网响应包含 `Content-Encoding: gzip`。浏览器关闭 DevTools 的 `Disable cache` 后，Monaco 的 `codicon` 示例请求由约 `2.28 s` 降至 `0.16 ms`，证明缓存链路正常；开启 `Disable cache` 的测试只代表强制冷加载，不代表普通用户刷新性能。
