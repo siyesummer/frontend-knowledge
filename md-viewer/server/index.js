@@ -10,8 +10,11 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 监听的根目录 = md-viewer 的上一级（即当前知识库仓库）
-const ROOT = path.resolve(__dirname, '..', '..')
+// 本地开发默认读取仓库根目录，生产容器通过 KNOWLEDGE_ROOT 指向只读挂载目录。
+const ROOT = path.resolve(
+  process.env.KNOWLEDGE_ROOT || path.resolve(__dirname, '..', '..')
+)
+const PUBLIC_DIR = path.resolve(__dirname, '..', 'src', 'dist')
 const SELF_DIR = path.basename(path.resolve(__dirname, '..'))  // 'md-viewer'
 
 const PORT = Number(process.env.MD_VIEWER_PORT || 3001)
@@ -22,11 +25,11 @@ const ALLOWED_EXT = new Set([
   '.yml', '.yaml', '.xml', '.svg', '.sql',
   '.sh', '.bash', '.zsh', '.ps1', '.bat', '.cmd',
   '.conf', '.config', '.ini', '.properties', '.toml',
-  '.env', '.example', '.template', '.dockerfile'
+  '.example', '.template', '.dockerfile'
 ])
 const ALLOWED_NAMES = new Set([
   'dockerfile', 'containerfile', 'makefile', 'license',
-  '.env', '.gitignore', '.gitattributes', '.dockerignore',
+  '.gitignore', '.gitattributes', '.dockerignore',
   '.editorconfig', '.npmrc', '.yarnrc', '.nvmrc'
 ])
 const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'dist', SELF_DIR])
@@ -34,6 +37,10 @@ const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'dist'
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'frontend-knowledge' })
+})
 
 /**
  * 把绝对路径转成相对 ROOT 的安全路径
@@ -143,6 +150,11 @@ app.get('/api/file', async (req, res) => {
   }
 })
 
+// 只有生产容器直接提供 Vite 构建产物，本地开发页面由 5173 的 Vite 服务提供。
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(PUBLIC_DIR, { index: 'index.html' }))
+}
+
 const server = http.createServer(app)
 const wss = new WebSocketServer({ server, path: '/ws' })
 
@@ -185,10 +197,10 @@ watcher
   .on('unlinkDir', notify('unlinkDir'))
   .on('error', err => console.error('[watcher]', err))
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  📁 md-viewer server`)
   console.log(`  ─ root:    ${ROOT}`)
-  console.log(`  ─ http:    http://localhost:${PORT}/api/tree`)
-  console.log(`  ─ ws:      ws://localhost:${PORT}/ws`)
+  console.log(`  ─ http:    http://0.0.0.0:${PORT}/api/tree`)
+  console.log(`  ─ ws:      ws://0.0.0.0:${PORT}/ws`)
   console.log(`  ─ web ui:  http://localhost:5173  (run npm run dev:web)\n`)
 })

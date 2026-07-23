@@ -44,6 +44,12 @@ npm run dev:server   # 只跑后端
 npm run dev:web      # 只跑前端（需要后端在跑）
 ```
 
+### 生产 Docker 部署
+
+生产环境不启动 Vite `5173`。Dockerfile 在构建阶段执行 `npm run build`，再由同一个 Node/Express 容器提供 `src/dist`、`/api/*` 和 `/ws`。容器只加入正式 Docker edge 网络，不发布宿主机端口，公网请求由 Docker edge 转发到容器内部 `3001`。
+
+完整的服务器首次部署、edge 路由、更新和回滚步骤见 [deploy/README.md](./deploy/README.md)。
+
 ## GitHub Pages 发布
 
 仓库提供 `.github/workflows/deploy-pages.yml`，只支持在 GitHub Actions 页面手动触发，不会在提交代码时自动发布。
@@ -96,10 +102,10 @@ md-viewer/
 服务端常量在 `server/index.js` 顶部：
 
 ```js
-const ROOT = path.resolve(__dirname, '..', '..')   // 监听目录（默认是当前知识库仓库）
+const ROOT = path.resolve(process.env.KNOWLEDGE_ROOT || path.resolve(__dirname, '..', '..'))
 const PORT = Number(process.env.MD_VIEWER_PORT || 3001) // 后端端口，可临时覆盖
 const ALLOWED_EXT = new Set([/* 支持的文本文件扩展名 */])
-const ALLOWED_NAMES = new Set([/* Dockerfile、.env、.gitignore 等特殊文件名 */])
+const ALLOWED_NAMES = new Set([/* Dockerfile、.gitignore 等特殊文件名 */])
 const IGNORED_DIRS = new Set(['node_modules', '.git', '.vscode', '.idea', 'dist', 'md-viewer'])
 ```
 
@@ -117,9 +123,10 @@ npm run dev
 ## 🛡️ 安全
 
 - 后端用 `safeJoin` 防止路径穿越（`../../etc/passwd` 之类）
-- 只允许读取白名单文本类型和明确的特殊文件名，二进制文件不会出现在文件树中
-- Express 服务包含本地文件读取和实时监听能力，只用于本地访问，**不要直接部署到公网**
-- 公网页面只使用 GitHub Actions 生成的静态数据，不部署 Express 和 WebSocket 服务
+- 只允许读取白名单文本类型和明确的特殊文件名，真实 `.env` 和二进制文件不会出现在文件树中
+- 本地 Express 服务用于 Vite 代理和 WebSocket；生产环境必须使用 `deploy/` 中的 Docker 配置，并由 edge 统一提供 HTTPS
+- 生产容器只读挂载知识库目录，容器不能通过 API 修改宿主机 Git 工作副本
+- GitHub Pages 使用独立静态模式，不部署 Express 和 WebSocket 服务
 
 ## 🔍 同步原理
 

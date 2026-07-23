@@ -630,3 +630,19 @@
 - `siyeWorld` 不再通过阿里云服务器 IP 判断备案展示，改为匹配 `siyefun.top` 和 `www.siyefun.top`，避免业务代码绑定或泄露服务器地址。
 - 历史验收记录中的客户端公网 IP 已分别匿名化为 RFC 5737 地址 `192.0.2.10` 和 `192.0.2.11`。后续文档不得记录服务器、开发者或用户的真实公网 IP；`127.0.0.1`、`0.0.0.0`、Docker 内部地址和 RFC 5737 示例地址可以保留。
 - 当前文件清理不会自动移除既有 Git 提交中的旧值；如需从远程历史彻底删除，必须单独评估 `git filter-repo`、提交 SHA 变化、分支协作和强制推送风险，未经用户明确确认不得改写历史。
+
+## 2026-07-23 `frontend-knowledge` GitHub Pages 发布验收
+
+- `frontend-knowledge` 已通过仓库根目录 `.github/workflows/deploy-pages.yml` 的 `workflow_dispatch` 手动 Workflow 成功发布到 `https://siyesummer.github.io/frontend-knowledge/#/`。
+- 页面已验证正常加载知识目录、中文目录名、暗色主题、代码/YAML 文件查看和 Hash 路由；静态资源使用 `/frontend-knowledge/` 基础路径。
+- 该 Pages 站点使用 `md-viewer` 的静态模式：Workflow 构建时生成知识树和文件 JSON，不运行 Express 或 WebSocket，因此不提供本地模式的文件实时刷新。
+- 静态生成脚本只读取 Git 已跟踪文件和未被 `.gitignore` 忽略的文件；本地 `.env`、`node_modules`、构建产物和隐藏目录不会进入 Pages 制品。`.env.example` 仅作为示例配置展示。
+- 本次提交为 `b60520b`（`feat: organize knowledge base and add Pages deployment`）；后续资料更新后需再次手动运行该 Workflow 才会发布新版本。
+
+## 2026-07-23 `knowledge.siyes.cn` 生产部署准备
+
+- 已确定使用“服务器 Git 工作副本 + 单个 knowledge Docker 容器 + 现有 Docker edge”的正式架构，不把 Vite 开发服务器 `5173` 作为生产入口，也不重新引入宿主机 systemd Node 服务。
+- 服务器仓库计划固定为 `/opt/frontend-knowledge`；容器把该目录只读挂载到 `/knowledge`。只更新资料时执行 `git pull --ff-only` 即可由 chokidar 和 WebSocket 通知浏览器，修改 md-viewer 程序或依赖时才需要重建容器。
+- `md-viewer/Dockerfile`、`md-viewer/.dockerignore`、`md-viewer/deploy/compose.yml`、`.env.example` 和部署说明已准备。生产容器 `siye-prod-knowledge` 加入外部网络 `siye-prod-edge-net`，不发布宿主机端口，由 Node `3001` 同时提供构建后的前端、`/api/*`、`/ws` 和 `/health`。
+- Node 服务支持通过 `KNOWLEDGE_ROOT` 指定知识目录，生产环境才启用 Express 静态 `dist`；本地 `npm run dev` 继续由 Vite `5173` 提供页面、Node `3001` 只提供 API 和 WebSocket。真实 `.env` 已从可读取类型中移除。
+- edge 源配置已准备 `knowledge:3001` upstream、普通代理和 `/ws` 长连接代理。当前只是本地待提交配置，服务器尚未启动 knowledge 容器、替换 edge 配置或切换 `knowledge.siyes.cn`，公网现状仍以服务器实际返回为准。
