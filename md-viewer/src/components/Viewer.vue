@@ -22,10 +22,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { defineAsyncComponent, ref, watch } from 'vue'
 import MarkdownView from './MarkdownView.vue'
 import MarkdownToc from './MarkdownToc.vue'
-import CodeView from './CodeView.vue'
+
+// Monaco is only needed after opening a code/configuration file. Keep it out of
+// the initial page bundle so Markdown browsing stays fast.
+const CodeView = defineAsyncComponent(() => import('./CodeView.vue'))
 
 const props = defineProps({ file: Object, theme: String })
 const viewerRef = ref(null)

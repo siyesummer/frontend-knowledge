@@ -152,6 +152,15 @@ app.get('/api/file', async (req, res) => {
 
 // 只有生产容器直接提供 Vite 构建产物，本地开发页面由 5173 的 Vite 服务提供。
 if (process.env.NODE_ENV === 'production') {
+  // Vite gives hashed files stable names; cache them aggressively while the
+  // HTML entry point remains revalidated on every deployment.
+  app.use('/assets', express.static(path.join(PUBLIC_DIR, 'assets'), {
+    maxAge: '1y',
+    immutable: true
+  }))
+  app.use('/monacoeditorwork', express.static(path.join(PUBLIC_DIR, 'monacoeditorwork'), {
+    maxAge: '1h'
+  }))
   app.use(express.static(PUBLIC_DIR, { index: 'index.html' }))
 }
 

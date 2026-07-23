@@ -84,7 +84,7 @@
   - `https://socket.siyes.cn`：`easy-chat` Socket.IO 独立服务入口
   - `https://sub2api.siyes.cn`：Docker Sub2API 独立服务入口
   - `https://draw.siyes.cn`：`svg-draw` 静态站点入口
-  - `https://knowledge.siyes.cn`：当前 `frontend-knowledge` 项目预留入口，应用和 edge Host 尚未部署
+  - `https://knowledge.siyes.cn`：`frontend-knowledge` 正式知识库入口，由 `siye-prod-knowledge` 提供页面、目录树 API 和 WebSocket
 - 当前仍处于准生产演练阶段，但 `siyes.cn` 备案已通过；`siye-world:0.0.2` 的演练 `.env.production` 仍编译 `http://203.0.113.10:8090`，音乐 API 基地址追加 `/music-api`，Socket.IO、聊天历史和日志使用 `http://203.0.113.10:8090`。正式 Docker 全量部署完成前不切换正式 HTTPS 域名。
 - 备案和 HTTPS 完成后的正式前端改为直接访问 `https://music-api.siyes.cn`、`https://socket.siyes.cn`、`https://linux-api.siyes.cn`。届时前端部署服务器只需提供静态文件和 SPA 回退，不需要配置业务接口代理；独立域名也便于其他客户端和服务器直接调用。第三方浏览器站点仍受 CORS 限制，服务端程序调用不受浏览器 CORS 限制。
 - 已使用 DNS-01 成功签发 `/etc/letsencrypt/live/siyes-production/` 通配符证书，覆盖 `siyes.cn` 和 `*.siyes.cn`，因此后续新增普通一层子域名不需要重新签发证书。证书有效期至 2026-10-19；DNSPod API Token 仅保存在服务器 `/etc/letsencrypt/dnspod.env`（`600 root:root`），Certbot manual auth/cleanup Hook 已完成 staging `renew --dry-run`：两条 TXT 自动创建、等待传播、验证并按 record ID 清理，状态目录无残留，正式证书哈希未变化，`certbot.timer` 正常。部署 Hook 已验证可执行 `nginx -t` 并平滑重载 `siye-prod-edge-nginx`。证书与自动续期完成不代表正式域名已经切流。
@@ -583,8 +583,8 @@
 
 - 正式公网入口已改为 Docker edge 直连：`siye-prod-edge-nginx` 直接绑定 `0.0.0.0:80/443`，旧 `127.0.0.1:18080/18443` 不再监听。宿主机 Nginx、`nginx-common` 和 `python3-certbot-nginx` 已彻底卸载，`nginx.service LoadState=not-found`，`/etc/nginx` 等宿主机残留已清理；正式 Docker edge 保持 `running/healthy`、`restart=unless-stopped`。
 - 卸载 `python3-certbot-nginx` 后已复核证书自动续期链路：Certbot `2.9.0` 保留，`siyes-production` 仍使用 `manual + dns-01`，DNSPod auth/cleanup Hook 和 Docker edge deploy Hook 均为 `700 root:root`，`certbot.timer` 为 `active/enabled`；deploy Hook 已再次通过容器内 `nginx -t` 并成功平滑重载 `siye-prod-edge-nginx`。
-- Docker edge 已补齐 `knowledge.siyes.cn` Host；应用上线前 HTTP 返回 HTTPS `308`，HTTPS 返回 `503 pending`。缺失 Host 配置更新备份位于 `/opt/siye-production/backups/edge-knowledge-route/20260721-221250`。
-- 8 个正式 HTTPS Host、9 个 HTTP `308`、Socket.IO/CORS、音乐播放、聊天、日志、Sub2API 真实调用和 `client_max_body_size 100m` 均已验收。证书部署 Hook 已验证可直接执行 `siye-prod-edge-nginx` 容器内 `nginx -t` 和平滑重载。
+- Docker edge 已补齐并启用 `knowledge.siyes.cn` Host：HTTP 跳转 HTTPS，HTTPS 通过 `knowledge:3001` 转发到 `siye-prod-knowledge`；上线前使用的 `503 pending` 占位响应已移除。早期缺失 Host 配置更新备份位于 `/opt/siye-production/backups/edge-knowledge-route/20260721-221250`。
+- 9 个正式 HTTPS Host、9 个 HTTP `308`、Socket.IO/CORS、音乐播放、聊天、日志、Sub2API 真实调用和 `client_max_body_size 100m` 均已验收；`knowledge.siyes.cn` 另已验收 `/health`、`/api/tree` 和首页 `200`。证书部署 Hook 已验证可直接执行 `siye-prod-edge-nginx` 容器内 `nginx -t` 和平滑重载。
 - Docker edge 公网直连回滚状态位于 `/opt/siye-production/backups/docker-edge-direct-cutover/20260721-221641`；第一阶段宿主机 Nginx 代理回滚状态位于 `/opt/siye-production/backups/host-nginx-cutover-20260721-163248`。
 - Docker edge 公网直连脚本已统一归档到 `Docker专题/正式部署/siye-stack/`：旧版保留在 `Docker入口直连切流-v1/`，补齐 `knowledge.siyes.cn` 配置安装与验证的实际切流版本保留在 `Docker入口直连切流-v2/`；原仓库根目录的 v2 临时展开副本已移入正式部署目录，不再作为独立项目维护。
 - 旧 `music-api.service`、`linux-server.service`、`easy-chat.service` unit 已删除，`LoadState=not-found`；旧 `/opt/music-api`、`/opt/easy-chat`、`/opt/linux-server` 和 `/var/log/siye` 已删除，旧 `3000/3030/8081` 不再监听。宿主机 MySQL 软件、配置、`/var/lib/mysql` 和依赖已清理，宿主机 `3306` 不再监听；正式 Docker MySQL 和其他正式容器均保持 `running/healthy`、`restart=unless-stopped`。
@@ -639,10 +639,13 @@
 - 静态生成脚本只读取 Git 已跟踪文件和未被 `.gitignore` 忽略的文件；本地 `.env`、`node_modules`、构建产物和隐藏目录不会进入 Pages 制品。`.env.example` 仅作为示例配置展示。
 - 本次提交为 `b60520b`（`feat: organize knowledge base and add Pages deployment`）；后续资料更新后需再次手动运行该 Workflow 才会发布新版本。
 
-## 2026-07-23 `knowledge.siyes.cn` 生产部署准备
+## 2026-07-23 `knowledge.siyes.cn` 生产部署验收
 
-- 已确定使用“服务器 Git 工作副本 + 单个 knowledge Docker 容器 + 现有 Docker edge”的正式架构，不把 Vite 开发服务器 `5173` 作为生产入口，也不重新引入宿主机 systemd Node 服务。
-- 服务器仓库计划固定为 `/opt/frontend-knowledge`；容器把该目录只读挂载到 `/knowledge`。只更新资料时执行 `git pull --ff-only` 即可由 chokidar 和 WebSocket 通知浏览器，修改 md-viewer 程序或依赖时才需要重建容器。
-- `md-viewer/Dockerfile`、`md-viewer/.dockerignore`、`md-viewer/deploy/compose.yml`、`.env.example` 和部署说明已准备。生产容器 `siye-prod-knowledge` 加入外部网络 `siye-prod-edge-net`，不发布宿主机端口，由 Node `3001` 同时提供构建后的前端、`/api/*`、`/ws` 和 `/health`。
+- 已按“服务器 Git 工作副本 + 单个 knowledge Docker 容器 + 现有 Docker edge”架构完成正式部署；生产环境不运行 Vite `5173`，也没有重新引入宿主机 systemd Node 服务。
+- 服务器仓库固定为 `/opt/frontend-knowledge`；容器把该目录只读挂载到 `/knowledge`。只更新资料时执行 `git pull --ff-only` 即可由 chokidar 和 WebSocket 通知浏览器，修改 md-viewer 程序或依赖时才需要重建容器。
+- 生产容器 `siye-prod-knowledge` 已达到 `running/healthy`，加入外部网络 `siye-prod-edge-net`，不发布宿主机端口，由 Node `3001` 同时提供构建后的前端、`/api/*`、`/ws` 和 `/health`。
 - Node 服务支持通过 `KNOWLEDGE_ROOT` 指定知识目录，生产环境才启用 Express 静态 `dist`；本地 `npm run dev` 继续由 Vite `5173` 提供页面、Node `3001` 只提供 API 和 WebSocket。真实 `.env` 已从可读取类型中移除。
-- edge 源配置已准备 `knowledge:3001` upstream、普通代理和 `/ws` 长连接代理。当前只是本地待提交配置，服务器尚未启动 knowledge 容器、替换 edge 配置或切换 `knowledge.siyes.cn`，公网现状仍以服务器实际返回为准。
+- Docker edge 已从 `503 pending` 占位配置切换为 `knowledge:3001` upstream，并通过平滑重载生效。edge 容器内直连 `/health` 返回 `{"status":"ok","service":"frontend-knowledge"}`；公网 `https://knowledge.siyes.cn/health`、`/api/tree` 和首页均返回 `200`，TLS 与 Express 静态页面链路正常。
+- `/ws` 已配置独立长连接代理；浏览器端文件变化实时刷新仍保留为待逐项验收项，不在本次 HTTP/API 上线结果中提前标记完成。
+- 首次加载性能诊断显示，旧版首屏主 JS 约 `4.49 MB`，主要由同步加载的 `monaco-editor` 导致；已改为代码/配置文件打开时按需加载 Monaco，验证构建后的首屏主 JS 约 `1.16 MB`，Monaco 延迟 chunk 约 `3.33 MB`。
+- 已为生产 Express 静态资源增加哈希资源长期缓存，为 Monaco worker 增加短期缓存；Docker edge Nginx 已准备 gzip 配置以压缩 JS、CSS 和 JSON。该优化需要服务器重新构建 `siye-prod-knowledge` 并同步 edge `nginx.conf` 后才会对公网生效。
