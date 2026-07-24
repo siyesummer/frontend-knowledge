@@ -76,6 +76,7 @@
 import { ref, reactive, onMounted, onBeforeUnmount, provide, watch, nextTick } from 'vue'
 import FileTree from './components/FileTree.vue'
 import Viewer from './components/Viewer.vue'
+import { findFileNode, getKnowledgePath } from './utils/deepLink'
 
 const tree = ref(null)
 const currentFile = ref(null)
@@ -127,12 +128,17 @@ async function loadTree() {
     const res = await fetch(treeUrl)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     tree.value = await res.json()
+    const initialPath = getKnowledgePath(window.location.search)
+    const initialFile = findFileNode(tree.value, initialPath)
+    if (initialFile && currentFile.value?.path !== initialFile.path) {
+      await openFile(initialFile, false)
+    }
   } catch (e) {
     console.error(e)
   }
 }
 
-async function openFile(node) {
+async function openFile(node, updateLocation = true) {
   try {
     const fileUrl = staticMode
       ? `${staticDataBase}files/${node.dataFile}`
@@ -143,6 +149,11 @@ async function openFile(node) {
       throw new Error(err.error || res.statusText)
     }
     currentFile.value = await res.json()
+    if (updateLocation) {
+      const url = new URL(window.location.href)
+      url.searchParams.set('path', node.path)
+      window.history.replaceState(null, '', url)
+    }
     await nextTick()
     fileTreeRef.value?.revealActive()
   } catch (e) {
