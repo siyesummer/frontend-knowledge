@@ -676,3 +676,10 @@
 - md-viewer 的 `/api/tree`、`/api/file`、WebSocket 监听和 Pages 静态数据生成均执行该清单；隐藏文件的直接接口请求返回 `404`，而不是只从左侧目录移除。
 - `siyes-agent` 对挂载的 frontend-knowledge 自动发现同一清单并排除内部路径；自身仓库的 `knowledge/public` 仍按原有公开资料目录读取。
 - `Docker演练` 当前包含 Compose、Nginx、数据库迁移、升级与回滚等内部结构，不整体公开；后续需要对外展示时，应另建脱敏的 Docker 实战案例目录。
+
+## 2026-07-24 `siyes-agent` v0.2.0 发布准备
+
+- `siyes-agent` v0.2.0 在 v0.1.0 基础上升级了 Markdown 标题层级切块、长段落二次切块、中英文技术词规范化、标题/路径/正文加权、目录问题召回和最近用户问题补全；`Vue3 reactive`、`reactiveMap`、`ref 和 reactive 的区别` 等真实问题已完成检索验证。
+- Widget 将流式消息改为响应式增量更新，SSE `delta` 到达后立即渲染，并增加生成中光标和动画帧节流滚动；生产构建为 `siye-agent-chat.v0.2.0.js`，使用新文件名避免命中 v0.1.0 浏览器缓存。
+- 本次升级只重建 `siye-prod-agent` 并原子替换主站 `index.html`、新增 v0.2.0 Widget 静态资源；不修改 Docker edge 路由、不发布宿主机 `3002`、不删除 v0.1.0 Widget，旧资源保留用于回滚。
+- 发布前验证已完成：后端 15 项测试通过，后端 TypeScript 类型检查和构建通过，Widget `vue-tsc` 与 Vite 生产构建通过。
