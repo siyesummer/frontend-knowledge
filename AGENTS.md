@@ -658,3 +658,21 @@
 - `/ws` 已配置独立长连接代理；浏览器端文件变化实时刷新仍保留为待逐项验收项，不在本次 HTTP/API 上线结果中提前标记完成。
 - 首次加载性能诊断显示，旧版首屏主 JS 约 `4.49 MB`，主要由同步加载的 `monaco-editor` 导致；现已改为代码/配置文件打开时按需加载 Monaco并完成正式部署。新首屏主 JS 约 `1.16 MB`，Monaco 延迟 chunk 约 `3.33 MB`，浏览器实测首页加载已明显加快。
 - 生产 Express 已为哈希静态资源增加长期缓存、为 Monaco worker 增加短期缓存，Docker edge Nginx gzip 已同步并生效，公网响应包含 `Content-Encoding: gzip`。浏览器关闭 DevTools 的 `Disable cache` 后，Monaco 的 `codicon` 示例请求由约 `2.28 s` 降至 `0.16 ms`，证明缓存链路正常；开启 `Disable cache` 的测试只代表强制冷加载，不代表普通用户刷新性能。
+
+## 2026-07-24 `siyes-agent` 首次生产发布验收
+
+- 独立仓库 [siyes-agent](https://github.com/siyesummer/siyes-agent) 的 `v0.1.0` 已部署到 `/opt/siye-production/siyes-agent`；生产 Compose 工作目录为 `/opt/siye-production/agent-deploy`。
+- 生产容器名为 `siye-prod-agent`，当前保持 `running/healthy`，只加入外部网络 `siye-prod-edge-net`，不发布宿主机 `3002` 端口。
+- Agent 通过只读挂载 `/opt/frontend-knowledge` 到容器 `/knowledge-source` 检索公开资料；敏感运行时配置仅保存在服务器 `.env`，不进入 Git 或前端资源。
+- Docker edge 已为 `siyes.cn` 和 `knowledge.siyes.cn` 代理 `/api/agent/*`；生产 CORS 白名单包含两个正式站点域名及知识库域名。
+- 主站静态目录 `/var/www/siyes.cn` 已发布 `assets/siye-agent-chat.v0.1.0.js`，首页通过 `/api/agent/chat` 使用可复用聊天组件。
+- 首次 bundle 曾因残留 `process.env.NODE_ENV` 导致浏览器初始化失败；widget 的 Vite 生产构建已加入静态替换，重新构建并部署后组件 Shadow DOM、聊天窗口和 SSE 响应均正常。
+- 主站真实验收已确认：`POST /api/agent/chat` 返回 `200`、`text/event-stream`、RAG 引用和 `delta/done` 事件均正常。中转站 API Key 的 IP 白名单曾为排障临时关闭，功能验收完成后必须恢复，仅允许腾讯云服务器公网出口 IPv4。
+
+## 2026-07-24 公开知识边界
+
+- 仓库根目录 `knowledge-public.json` 是在线知识库、GitHub Pages 和 `siyes-agent` 共用的公开清单；不能在三个项目中分别维护不同规则。
+- 当前公开前端、Promise 和 `Docker专题` 顶层通用教程；隐藏 `AGENTS.md`、`Docker专题/Docker演练`、`Docker专题/正式部署`、`Linux部署`、`md-viewer` 和清单文件本身。
+- md-viewer 的 `/api/tree`、`/api/file`、WebSocket 监听和 Pages 静态数据生成均执行该清单；隐藏文件的直接接口请求返回 `404`，而不是只从左侧目录移除。
+- `siyes-agent` 对挂载的 frontend-knowledge 自动发现同一清单并排除内部路径；自身仓库的 `knowledge/public` 仍按原有公开资料目录读取。
+- `Docker演练` 当前包含 Compose、Nginx、数据库迁移、升级与回滚等内部结构，不整体公开；后续需要对外展示时，应另建脱敏的 Docker 实战案例目录。

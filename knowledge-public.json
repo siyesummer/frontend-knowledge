@@ -1,0 +1,10 @@
+{
+  "excludedPaths": [
+    "AGENTS.md",
+    "knowledge-public.json",
+    "Docker专题/Docker演练",
+    "Docker专题/正式部署",
+    "Linux部署",
+    "md-viewer"
+  ]
+}

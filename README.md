@@ -61,6 +61,29 @@ Pages 发布使用仓库根目录的 [`deploy-pages.yml`](./.github/workflows/de
 
 提交代码不会自动发布 Pages。资料更新后，需要再次手动运行 Workflow。
 
+## SIYES Agent
+
+主站已接入轻量级 RAG Agent，知识库域名已具备同源 Agent API 路由：
+
+- 主站入口：<https://siyes.cn>，右下角打开 `SIYES 助手`
+- 知识库入口：<https://knowledge.siyes.cn>，页面组件后续接入
+- Agent 只检索经过确认的公开资料，并通过 SSE 流式返回回答和引用
+- 生产后端由独立的 `siyes-agent` Docker 容器提供，不发布宿主机端口，由 Docker edge 反向代理 `/api/agent/*`
+- API Key 只通过服务器运行时环境变量注入，不写入仓库、镜像或前端 bundle
+
+Agent 组件源码位于独立仓库 [siyes-agent](https://github.com/siyesummer/siyes-agent)，首页使用版本化的 `siye-agent-chat` widget 静态资源。
+
+## 公开资料范围
+
+在线知识库、GitHub Pages 和 SIYES Agent 共用仓库根目录的 [`knowledge-public.json`](./knowledge-public.json) 作为公开边界：
+
+- 公开前端、Promise 和 Docker 顶层通用学习资料
+- 不公开 `AGENTS.md`、`Docker专题/Docker演练`、`Docker专题/正式部署`、`Linux部署` 和 `md-viewer`
+- 在线知识库的目录树和文件接口都会执行过滤，隐藏路径不能通过 `/api/file` 直接读取
+- Agent 检索挂载的仓库资料时读取同一清单，避免网站与问答的公开范围不一致
+
+新增内部目录时必须同步加入清单；需要公开 Docker 实战内容时，优先整理成脱敏后的独立案例，而不是直接开放现有演练或正式部署目录。
+
 ## 相关项目
 
 - [siyeWorld](https://github.com/siyesummer/siyeWorld)：音乐空间、聊天前端和 easy-chat 工作区

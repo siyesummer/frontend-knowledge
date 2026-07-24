@@ -22,6 +22,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder --chown=node:node /app/server ./server
+COPY --from=builder --chown=node:node /app/public-policy.js ./public-policy.js
 COPY --from=builder --chown=node:node /app/src/dist ./src/dist
 
 USER node

@@ -6,6 +6,7 @@ import http from 'http'
 import { WebSocketServer } from 'ws'
 import chokidar from 'chokidar'
 import { fileURLToPath } from 'url'
+import { loadPublicPolicy } from '../public-policy.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -16,6 +17,7 @@ const ROOT = path.resolve(
 )
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'src', 'dist')
 const SELF_DIR = path.basename(path.resolve(__dirname, '..'))  // 'md-viewer'
+const publicPolicy = await loadPublicPolicy(ROOT)
 
 const PORT = Number(process.env.MD_VIEWER_PORT || 3001)
 const ALLOWED_EXT = new Set([
@@ -75,6 +77,7 @@ function isSupportedFile(fileName) {
 function shouldIgnoreWatchedPath(watchedPath) {
   const relative = path.relative(ROOT, watchedPath)
   if (!relative || relative === '.') return false
+  if (!publicPolicy.isPublic(relative)) return true
 
   const segments = relative.split(path.sep)
   if (segments.some(segment => IGNORED_DIRS.has(segment))) return true
@@ -88,6 +91,7 @@ function shouldIgnoreWatchedPath(watchedPath) {
  * 递归读取目录树
  */
 async function readTree(dir = ROOT) {
+  if (dir !== ROOT && !publicPolicy.isPublic(toRelative(dir))) return null
   const name = path.basename(dir)
   const stat = await fs.stat(dir)
   if (!stat.isDirectory()) {
@@ -104,6 +108,7 @@ async function readTree(dir = ROOT) {
   const children = []
   for (const e of entries) {
     if (IGNORED_DIRS.has(e.name)) continue
+    if (!publicPolicy.isPublic(toRelative(path.join(dir, e.name)))) continue
     if (e.isDirectory() && e.name.startsWith('.')) continue
     if (e.isFile() && !isSupportedFile(e.name)) continue
     const child = await readTree(path.join(dir, e.name))
@@ -137,6 +142,7 @@ app.get('/api/file', async (req, res) => {
     const rel = req.query.path || ''
     if (!rel) return res.status(400).json({ error: 'path required' })
     const abs = safeJoin(rel)
+    if (!publicPolicy.isPublic(toRelative(abs))) return res.status(404).json({ error: 'file not found' })
     const stat = await fs.stat(abs)
     if (!stat.isFile()) return res.status(400).json({ error: 'not a file' })
     const ext = path.extname(abs).toLowerCase()

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
+import { loadPublicPolicy } from '../public-policy.js'
 
 const execFileAsync = promisify(execFile)
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
@@ -11,6 +12,7 @@ const viewerDir = path.resolve(scriptDir, '..')
 const repoRoot = path.resolve(viewerDir, '..')
 const outputDir = path.join(viewerDir, 'src', 'public', 'knowledge-data')
 const filesOutputDir = path.join(outputDir, 'files')
+const publicPolicy = await loadPublicPolicy(repoRoot)
 
 const allowedExtensions = new Set([
   '.md', '.mdx', '.txt', '.log',
@@ -74,7 +76,7 @@ async function listCommittableFiles() {
     .split('\0')
     .filter(Boolean)
     .map(filePath => filePath.replaceAll('\\', '/'))
-    .filter(filePath => isVisiblePath(filePath) && isSupportedFile(filePath))
+    .filter(filePath => isVisiblePath(filePath) && publicPolicy.isPublic(filePath) && isSupportedFile(filePath))
     .sort((left, right) => left.localeCompare(right, 'zh-CN'))
 }
 

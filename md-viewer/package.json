@@ -7,6 +7,7 @@
     "dev": "concurrently -k -n SERVER,WEB -c blue,green \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "node server/index.js",
     "dev:web": "vite",
+    "test": "node --test test",
     "build": "vite build",
     "build:pages": "node scripts/generate-static-data.mjs && vite build --mode pages",
     "preview": "vite preview"
