@@ -2,6 +2,20 @@
 
 > 从根级《前端知识点.md》按主题拆分而来。
 
+## Promise 基础概览
+
+Promise 是 JavaScript 中用于表示异步操作最终结果的对象。它把“现在开始执行、稍后成功或失败”的过程封装起来，避免异步回调层层嵌套，并支持通过 `.then()`、`.catch()` 和 `.finally()` 组织后续处理。
+
+一个 Promise 有三种状态：
+
+- `pending`：异步操作仍在进行。
+- `fulfilled`：异步操作成功完成，并得到结果值。
+- `rejected`：异步操作失败，并得到失败原因。
+
+状态只能从 `pending` 变为 `fulfilled` 或 `rejected`，一旦确定就不能再次改变。每次调用 `.then()`、`.catch()` 或 `.finally()` 都会返回新的 Promise，因此可以继续链式调用。
+
+Promise 解决的是异步结果的状态管理和流程编排问题；它不会让 JavaScript 变成多线程，也不会自动取消已经开始的异步操作。Promise 回调会进入微任务队列，具体执行时机需要结合 Event Loop 理解。
+
 ## JavaScript 事件循环（Event Loop）
 
 > JS 是**单线程**语言，但通过 Event Loop 实现了**非阻塞的异步执行**。理解 Event Loop 是搞懂 `setTimeout` / Promise / `async-await` / `requestAnimationFrame` / `nextTick` 等所有异步行为的钥匙。
