@@ -73,11 +73,13 @@
 ### SIYES Agent
 
 - 独立仓库为 `siyesummer/siyes-agent`；服务器源码目录 `/opt/siye-production/siyes-agent`，生产 Compose 目录 `/opt/siye-production/agent-deploy`。
-- 当前生产版本为 `v0.4.1`，镜像 `siye-prod-agent:0.4.1`；容器只加入 edge 网络，不发布宿主机 `3002`。
+- 当前生产版本为 `v0.5.0`，镜像 `siye-prod-agent:0.5.0`；容器只加入 edge 网络，不发布宿主机 `3002`。
 - 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序并保留原有证据门禁；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`，档案不可用时自动切换，全部不可用时降级到 FTS5。
 - 外部知识库必须同时配置 `/opt/frontend-knowledge:/knowledge-source:ro` 挂载和 `KNOWLEDGE_EXTRA_PATHS=/knowledge-source`；只有挂载而环境变量为空时，Agent 只会索引内置资料。
-- 主站引用 `/assets/siye-agent-chat.v0.2.3.js`。发布 Widget 使用新版本文件名，并保留旧资源与首页备份以便回滚。
+- 主站引用 `/assets/siye-agent-chat.v0.2.4.js`。Widget 会明确告知用户问题将用于质量分析和评测，并提醒不要提交敏感信息；发布时继续使用新版本文件名，并保留旧资源与首页备份以便回滚。
 - Agent 只依据允许公开的知识资料回答，不使用模型自身知识补全未命中内容。API Key 和模型参数只存在服务器运行时 `.env`。
+- Agent 为每个聊天请求输出一条 `rag_trace` 结构化记录，包含完整原始问题、问题分类、检索过程、Embedding 调用、引用、最终决策和各阶段耗时；Docker `json-file` 日志按 `10m x 5` 轮转。完整输入属于需要受控的生产数据，不得记录请求头、API Key、知识正文或模型完整回答。
+- 正式追踪查询接口为 `GET /api/agent/traces`，使用独立的 `X-RAG-Trace-Token` 请求头鉴权；未配置、缺失或错误 Token 均返回相同 `404`。接口返回当前进程最近 500 条有界内存副本，容器重启后清空，Docker 轮转日志仍是原始记录来源；查询 Token 只保存在服务器 `.env` 和受控的本地分析环境中，不能进入 URL、Widget、其他前端代码或 Git。
 - 当前只保留最近 2 条有效用户问题用于明确的省略式追问，不把 assistant 回答传给模型；快速输入已有提交锁和输入法组合态保护。
 - 限流为每个来源 IP 每分钟 20 次；达到上限返回 `429 + Retry-After + RATE_LIMIT_EXCEEDED`，Widget 显示剩余等待秒数。
 - Agent 与公网之间只有一层 edge Nginx，生产必须配置 `TRUST_PROXY=1`；`true` 会被配置校验拒绝，避免客户端通过伪造 `X-Forwarded-For` 绕过按 IP 限流。
@@ -148,6 +150,7 @@
 - Linux 历史部署资料：[Linux部署/README.md](./Linux部署/README.md)
 - knowledge.siyes.cn 部署：[md-viewer/deploy/README.md](./md-viewer/deploy/README.md)
 - SIYES Agent 架构：`E:\本地项目\siyes-agent\docs\RAG-ARCHITECTURE.md`
+- SIYES Agent 可观测性：`E:\本地项目\siyes-agent\docs\RAG-OBSERVABILITY.md`
 
 > 历史文档可能保留当时状态。当前生产操作以本文件“当前生产基线”、服务器实际 Compose 和实时检查为准；历史文档用于学习复盘，不可未经核对直接照搬。
 
