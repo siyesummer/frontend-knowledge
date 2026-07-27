@@ -73,11 +73,14 @@
 ### SIYES Agent
 
 - 独立仓库为 `siyesummer/siyes-agent`；服务器源码目录 `/opt/siye-production/siyes-agent`，生产 Compose 目录 `/opt/siye-production/agent-deploy`。
-- 当前生产版本为 `v0.2.3`，镜像 `siye-prod-agent:0.2.3`；容器只加入 edge 网络，不发布宿主机 `3002`。
+- 当前生产版本为 `v0.4.1`，镜像 `siye-prod-agent:0.4.1`；容器只加入 edge 网络，不发布宿主机 `3002`。
+- 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序并保留原有证据门禁；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`，档案不可用时自动切换，全部不可用时降级到 FTS5。
+- 外部知识库必须同时配置 `/opt/frontend-knowledge:/knowledge-source:ro` 挂载和 `KNOWLEDGE_EXTRA_PATHS=/knowledge-source`；只有挂载而环境变量为空时，Agent 只会索引内置资料。
 - 主站引用 `/assets/siye-agent-chat.v0.2.3.js`。发布 Widget 使用新版本文件名，并保留旧资源与首页备份以便回滚。
 - Agent 只依据允许公开的知识资料回答，不使用模型自身知识补全未命中内容。API Key 和模型参数只存在服务器运行时 `.env`。
-- v0.2.3 只保留最近 2 条有效用户问题用于明确的省略式追问，不把 assistant 回答传给模型；快速输入已有提交锁和输入法组合态保护。
+- 当前只保留最近 2 条有效用户问题用于明确的省略式追问，不把 assistant 回答传给模型；快速输入已有提交锁和输入法组合态保护。
 - 限流为每个来源 IP 每分钟 20 次；达到上限返回 `429 + Retry-After + RATE_LIMIT_EXCEEDED`，Widget 显示剩余等待秒数。
+- Agent 与公网之间只有一层 edge Nginx，生产必须配置 `TRUST_PROXY=1`；`true` 会被配置校验拒绝，避免客户端通过伪造 `X-Forwarded-For` 绕过按 IP 限流。
 - Agent SSE 的 edge 特殊边界：
   - `siyes_agent_upstream` 不得配置 Nginx upstream keepalive。
   - `/api/agent/` 必须清空 `Upgrade`、设置 `Connection close`，并保留 HTTP/1.1、`proxy_buffering off` 和长读取超时。
