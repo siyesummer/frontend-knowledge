@@ -74,7 +74,7 @@
 
 - 独立仓库为 `siyesummer/siyes-agent`；服务器源码目录 `/opt/siye-production/siyes-agent`，生产 Compose 目录 `/opt/siye-production/agent-deploy`。
 - 当前生产版本为 `v0.5.2`，镜像 `siye-prod-agent:0.5.2`；容器只加入 edge 网络，不发布宿主机 `3002`。
-- 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序并保留原有证据门禁；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`。当前活动档案为百炼 `text-embedding-v3`；火山 vision 在控制台关闭后被持久标记为 `retired`。明确额度耗尽、到期、下线或未开通模型服务时自动切换，全部不可用时降级到 FTS5。
+- 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序并保留原有证据门禁；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`。当前活动档案为百炼 `text-embedding-v3`，语义授权阈值为 `0.62`、最多授权 `Top-3`；火山 vision 在控制台关闭后被持久标记为 `retired`。明确额度耗尽、到期、下线或未开通模型服务时自动切换，全部不可用时降级到 FTS5。
 - 外部知识库必须同时配置 `/opt/frontend-knowledge:/knowledge-source:ro` 挂载和 `KNOWLEDGE_EXTRA_PATHS=/knowledge-source`；只有挂载而环境变量为空时，Agent 只会索引内置资料。
 - 主站引用 `/assets/siye-agent-chat.v0.2.4.js`。Widget 会明确告知用户问题将用于质量分析和评测，并提醒不要提交敏感信息；发布时继续使用新版本文件名，并保留旧资源与首页备份以便回滚。
 - Agent 只依据允许公开的知识资料回答，不使用模型自身知识补全未命中内容。API Key 和模型参数只存在服务器运行时 `.env`。
