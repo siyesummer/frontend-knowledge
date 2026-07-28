@@ -16,6 +16,34 @@ Promise 是 JavaScript 中用于表示异步操作最终结果的对象。它把
 
 Promise 解决的是异步结果的状态管理和流程编排问题；它不会让 JavaScript 变成多线程，也不会自动取消已经开始的异步操作。Promise 回调会进入微任务队列，具体执行时机需要结合 Event Loop 理解。
 
+## Promise `.finally()`：无论成功失败都执行收尾逻辑
+
+当异步任务无论成功还是失败都需要执行同一段收尾逻辑时，可以使用 `.finally(callback)`。它会在 Promise 变为 `fulfilled` 或 `rejected` 后执行，适合关闭 loading、释放资源、关闭连接或清理临时状态。
+
+```javascript
+setLoading(true)
+
+runTask()
+  .then(result => {
+    render(result)
+  })
+  .catch(error => {
+    showError(error)
+  })
+  .finally(() => {
+    setLoading(false)
+  })
+```
+
+如果不用 `.finally()`，通常需要在 `.then()` 和 `.catch()` 中分别调用 `setLoading(false)`。这不仅会重复代码，还容易在新增分支时漏掉清理逻辑。`.finally()` 把与结果无关的收尾操作集中到一个位置，使成功和失败链路保持一致。
+
+`.finally()` 回调通常不接收成功值或失败原因，因为收尾逻辑不应该依赖任务结果。它与 `.then()`、`.catch()` 一样会返回新的 Promise，但结果传递有两个需要注意的规则：
+
+- 回调正常执行，或返回一个成功的 Promise 时，原来的成功值或失败原因会继续向后传递。
+- 回调抛出异常，或返回一个 rejected Promise 时，新的错误会替代原来的结果，后续链路会进入失败状态。
+
+因此，`.finally()` 适合执行必要且与业务结果无关的清理；不要在其中编写需要读取成功数据、恢复失败原因或决定业务分支的逻辑，这些逻辑仍应放在 `.then()` 或 `.catch()` 中。
+
 ## JavaScript 事件循环（Event Loop）
 
 > JS 是**单线程**语言，但通过 Event Loop 实现了**非阻塞的异步执行**。理解 Event Loop 是搞懂 `setTimeout` / Promise / `async-await` / `requestAnimationFrame` / `nextTick` 等所有异步行为的钥匙。
