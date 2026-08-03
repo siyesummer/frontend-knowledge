@@ -75,6 +75,7 @@
 - 独立仓库为 `siyesummer/siyes-agent`；服务器源码目录 `/opt/siye-production/siyes-agent`，生产 Compose 目录 `/opt/siye-production/agent-deploy`。
 - 当前生产版本为 `v0.8.0`，镜像 `siye-prod-agent:0.8.0`；容器只加入 edge 网络，不发布宿主机 `3002`。生产 Hybrid 索引为 1967 分片，代码围栏内的 `#` 注释不再被误当 Markdown 标题。
 - 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序，并在原有证据门禁前执行通用编程语言元数据一致性判断；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`。当前活动档案为百炼 `text-embedding-v4`，语义授权阈值为 `0.65`、最多授权 `Top-3`；百炼 v3 因额度耗尽被持久标记为 `quota_exhausted`，火山 vision 为 `retired`。明确额度耗尽、到期、下线或未开通模型服务时自动切换，全部不可用时降级到 FTS5。
+- Reranker 已完成百炼 `qwen3-rerank` 的可选本地适配、失败回退和固定评测，但当前没有证明独立质量收益且增加明显延迟，生产开关必须保持 `KNOWLEDGE_RERANKER_ENABLED=false`。下一阶段优先实现知识库 `git pull --ff-only` 后主动刷新、版本化快照、后台构建和 FTS5/向量原子切换；真实问题反馈闭环在刷新链路稳定后再启动。
 - 外部知识库必须同时配置 `/opt/frontend-knowledge:/knowledge-source:ro` 挂载和 `KNOWLEDGE_EXTRA_PATHS=/knowledge-source`；只有挂载而环境变量为空时，Agent 只会索引内置资料。
 - 主站引用 `/assets/siye-agent-chat.v0.2.5.js`，顶部能力描述为“混合检索 RAG Agent”。Widget 会明确告知用户问题将用于质量分析和评测，并提醒不要提交敏感信息；发布时继续使用新版本文件名，并保留旧资源与首页备份以便回滚。
 - Agent 只依据允许公开的知识资料回答，不使用模型自身知识补全未命中内容。API Key 和模型参数只存在服务器运行时 `.env`。
@@ -150,6 +151,8 @@
 - Linux 历史部署资料：[Linux部署/README.md](./Linux部署/README.md)
 - knowledge.siyes.cn 部署：[md-viewer/deploy/README.md](./md-viewer/deploy/README.md)
 - SIYES Agent 架构：`E:\本地项目\siyes-agent\docs\RAG-ARCHITECTURE.md`
+- SIYES Agent 索引生命周期与预热：`E:\本地项目\siyes-agent\docs\RAG-INDEX-LIFECYCLE-AND-WARMUP.md`
+- SIYES Agent 检索升级计划：`E:\本地项目\siyes-agent\docs\RAG-RETRIEVAL-UPGRADE-PLAN.md`
 - SIYES Agent 可观测性：`E:\本地项目\siyes-agent\docs\RAG-OBSERVABILITY.md`
 
 > 历史文档可能保留当时状态。当前生产操作以本文件“当前生产基线”、服务器实际 Compose 和实时检查为准；历史文档用于学习复盘，不可未经核对直接照搬。
