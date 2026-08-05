@@ -73,11 +73,11 @@
 ### SIYES Agent
 
 - 独立仓库为 `siyesummer/siyes-agent`；服务器源码目录 `/opt/siye-production/siyes-agent`，生产 Compose 目录 `/opt/siye-production/agent-deploy`。
-- 当前生产版本为 `v0.9.0`，镜像 `siye-prod-agent:0.9.0`；容器只加入 edge 网络，不发布宿主机 `3002`。生产 Hybrid 索引为 2005 分片，代码围栏内的 `#` 注释不再被误当 Markdown 标题。
+- 当前生产版本为 `v0.10.0`，镜像 `siye-prod-agent:0.10.0`；容器只加入 edge 网络，不发布宿主机 `3002`。生产 Hybrid 索引为 2005 分片，代码围栏内的 `#` 注释不再被误当 Markdown 标题。
 - 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序，并在原有证据门禁前执行通用编程语言元数据一致性判断；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`。当前活动档案为百炼 `text-embedding-v4`，语义授权阈值为 `0.65`、最多授权 `Top-3`；百炼 v3 因额度耗尽被持久标记为 `quota_exhausted`，火山 vision 为 `retired`。明确额度耗尽、到期、下线或未开通模型服务时自动切换，全部不可用时降级到 FTS5。
 - Reranker 已完成百炼 `qwen3-rerank` 的可选本地适配、失败回退和固定评测，但当前没有证明独立质量收益且增加明显延迟，生产开关必须保持 `KNOWLEDGE_RERANKER_ENABLED=false`，现阶段不继续针对固定失败案例调参。
 - `v0.9.0` 已上线知识库 `git pull --ff-only` 后的主动索引刷新：受控脚本以知识库所有者身份更新 Git，只在公开资料变化时触发；后台构建包含公开分片、FTS5、向量索引和元数据的版本化快照，每次查询固定使用同一快照，全部校验通过后再原子切换。普通刷新失败保留旧快照；`knowledge-public.json` 变化从刷新开始阻断 readiness 与问答，成功后恢复，失败则保持 fail-closed。刷新状态、来源 Git revision、快照 ID、公开策略哈希、向量复用/补算量、耗时和失败原因可观测，管理接口仅接受容器 loopback 请求，`SIGHUP` 只作为备用触发。生产已验证无变化与内部资料更新跳过、无内容变化后台刷新全量复用 1967 个向量、刷新后 Hybrid 持续 ready、内部接口公网 `404`，以及 Docker 正例和 Python 跨语言负例。首次真实公开内容增量也已完成验收：3 个公开文件变化后在 5278ms 内原子切换到 2005 分片的新快照，复用 1965 个向量并补算 40 个；新增 `watchEffect` 问题准确引用新文档，原有 Docker 正例和 Python 跨语言负例继续通过。公开策略失败注入仍留待隔离环境演练，不在单实例生产主动制造。
-- 主动刷新链路经过真实公开内容增长验证后，下一阶段进入真实问题反馈闭环：从受控的 `rag_trace` 中筛选真实问题，经过人工脱敏和分类后再进入固定评测集与回归验证，不直接把生产原始输入当作自动训练或自动调参数据。
+- `v0.10.0` 已上线真实问题反馈候选闭环：追踪接口支持 `topicMismatch` 服务端过滤和低带宽 `view=feedback`，导出器默认小批次串行筛选拒答与主题错配，排除代码输入，执行基础脱敏和去重，并只生成 `pending` 人工审核文件，不直接修改固定评测集。生产 loopback `limit=1` 验证读取 1 条并生成 1 条候选，人工审核与禁止直接导入门禁均生效，没有通过公网批量下载完整 trace。候选记录稳定 `snapshotId`；`sourceRevision` 当前只在显式刷新传入后存在，容器重启后的启动预热尚不恢复该映射。
 - 外部知识库必须同时配置 `/opt/frontend-knowledge:/knowledge-source:ro` 挂载和 `KNOWLEDGE_EXTRA_PATHS=/knowledge-source`；只有挂载而环境变量为空时，Agent 只会索引内置资料。
 - 主站引用 `/assets/siye-agent-chat.v0.2.5.js`，顶部能力描述为“混合检索 RAG Agent”。Widget 会明确告知用户问题将用于质量分析和评测，并提醒不要提交敏感信息；发布时继续使用新版本文件名，并保留旧资源与首页备份以便回滚。
 - Agent 只依据允许公开的知识资料回答，不使用模型自身知识补全未命中内容。API Key 和模型参数只存在服务器运行时 `.env`。
