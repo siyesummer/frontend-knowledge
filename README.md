@@ -31,6 +31,7 @@ SIYES 站长的联系方式为 QQ 邮箱 [2293147233@qq.com](mailto:2293147233@q
 ## 目录结构
 
 - `前端知识点/`：JavaScript、浏览器、网络、Vue 和工程实践
+- `Vue3 watchEffect源码解析.md`：Vue 3.5 `watchEffect` 的依赖收集、调度、清理和生命周期源码链路
 - `Promise专题/`：Promise、异步流程和源码分析
 - `Docker专题/`：Docker 基础、Compose 演练、正式部署和回滚记录
 - `Linux部署/`：Linux、Nginx、systemd 和服务器部署资料
