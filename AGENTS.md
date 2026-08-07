@@ -73,7 +73,7 @@
 ### SIYES Agent
 
 - 独立仓库为 `siyesummer/siyes-agent`；服务器源码目录 `/opt/siye-production/siyes-agent`，生产 Compose 目录 `/opt/siye-production/agent-deploy`。
-- 当前生产版本为 `v0.13.0`，镜像 `siye-prod-agent:0.13.0`；容器只加入 edge 网络，不发布宿主机 `3002`。生产 Hybrid 索引为 2005 分片，代码围栏内的 `#` 注释不再被误当 Markdown 标题。
+- 当前生产版本为 `v0.14.0`，镜像 `siye-prod-agent:0.14.0`；容器只加入 edge 网络，不发布宿主机 `3002`。生产 Hybrid 索引为 2005 分片，代码围栏内的 `#` 注释不再被误当 Markdown 标题。
 - 生产检索使用 FTS5/BM25 与 Embedding 向量召回的 Hybrid 模式，通过 RRF 合并排序，并在原有证据门禁前执行通用编程语言元数据一致性判断；向量缓存与模型状态持久化在命名卷 `agent-embedding-cache`。当前活动档案为百炼 `text-embedding-v4`，语义授权阈值为 `0.65`、最多授权 `Top-3`；百炼 v3 因额度耗尽被持久标记为 `quota_exhausted`，火山 vision 为 `retired`。明确额度耗尽、到期、下线或未开通模型服务时自动切换，全部不可用时降级到 FTS5。
 - Reranker 已完成百炼 `qwen3-rerank` 的可选本地适配、失败回退和固定评测，但当前没有证明独立质量收益且增加明显延迟，生产开关必须保持 `KNOWLEDGE_RERANKER_ENABLED=false`，现阶段不继续针对固定失败案例调参。
 - `v0.9.0` 已上线知识库 `git pull --ff-only` 后的主动索引刷新：受控脚本以知识库所有者身份更新 Git，只在公开资料变化时触发；后台构建包含公开分片、FTS5、向量索引和元数据的版本化快照，每次查询固定使用同一快照，全部校验通过后再原子切换。普通刷新失败保留旧快照；`knowledge-public.json` 变化从刷新开始阻断 readiness 与问答，成功后恢复，失败则保持 fail-closed。刷新状态、来源 Git revision、快照 ID、公开策略哈希、向量复用/补算量、耗时和失败原因可观测，管理接口仅接受容器 loopback 请求，`SIGHUP` 只作为备用触发。生产已验证无变化与内部资料更新跳过、无内容变化后台刷新全量复用 1967 个向量、刷新后 Hybrid 持续 ready、内部接口公网 `404`，以及 Docker 正例和 Python 跨语言负例。首次真实公开内容增量也已完成验收：3 个公开文件变化后在 5278ms 内原子切换到 2005 分片的新快照，复用 1965 个向量并补算 40 个；新增 `watchEffect` 问题准确引用新文档，原有 Docker 正例和 Python 跨语言负例继续通过。公开策略失败与恢复已使用生产同版本镜像在 `--network none` 的一次性隔离容器中完成：无效策略使 readiness 与问答同时 `503`，修复重试后均恢复 `200`，临时容器和目录无残留，正式 Agent 未重启并持续 healthy；单实例生产不主动制造该故障。
@@ -81,6 +81,7 @@
 - `v0.11.0` 已上线用户显式“有帮助/没帮助”反馈，主站 Widget 为 `v0.3.0`：回答完成后才显示反馈控件；浏览器只持有与 `requestId` 绑定的 HMAC 凭证，不持有追踪查询 Token；负反馈只选择结构化原因，不收集自由文本。服务端按回答幂等更新并把追加式事件写入独立命名卷 `agent-feedback-data`，受控查询仍使用 `X-RAG-Trace-Token`。生产已验证正常问答、六类负反馈原因、提交状态、改选、JSONL 落盘、容器重启后恢复最新状态、移动端无横向溢出和控制台无错误；首次只读备份已建立，人工烟测事件随后从活动数据中清理，备份保留。该信号只能进入人工审核，不能自动成为评测真值或训练数据；反馈卷不得与 Embedding 缓存一起清理，也不得执行 `docker compose down -v`。
 - `v0.12.0` 已上线 `snapshotId -> sourceRevision` 持久映射：成功刷新后写入现有 `/app/data` 卷，启动预热只对完全相同的快照恢复来源 Git revision；状态损坏或写入失败只告警，不影响检索与可用性。生产同内容刷新在 1482ms 内复用全部 2005 个向量且新增为 0，状态文件落盘；只重启 Agent 后在 1618ms 内恢复相同快照与 revision，真实 `watchEffect` 问答的低带宽 trace 也同时保留两者。该能力只增强反馈候选和排障的版本追溯，不参与召回、门禁或模型调用。
 - `v0.13.0` 已上线点踩与 trace 的人工审核候选关联：导出器默认读取持久化 `unhelpful` 反馈，按 `requestId` 每批最多 20 个串行回查低带宽 trace，把结构化原因、decision、引用、快照与 source revision 合并为 `version=2` 的 `pending` 候选；找不到易失 trace 时只统计缺失，不重建或猜测问题。生产单条真实反馈验收得到 1 条点踩、1 条匹配、0 条缺失和 1 条 `user_unhelpful` 候选，人工隐私审核与禁止直接导入评测集门禁保持生效；改回 `helpful` 后点踩查询为 0。该信号仍不能自动成为评测真值、训练数据或参数调整依据。
+- `v0.14.0` 已上线反馈一致性备份、默认保留最近 30 份的宿主机脚本、每日 systemd timer 和隔离恢复演练。备份在反馈存储的同一串行队列内重新读取并严格校验完整追加历史，记录事件数、折叠记录数、内容 SHA 和文件 SHA，校验后才原子落盘；内部接口只接受容器 loopback。首次真实备份包含 2 条事件、折叠为 1 条最新记录；相同备份在 `--network none`、只读根文件系统、丢弃全部 capabilities、不挂载生产反馈卷的一次性容器中恢复成功，timer 已启用。备份保持 `0600 root`，不通过放宽权限解决读取；当前副本仍位于同一宿主机，不等同于异地容灾。反馈卷、Embedding 卷和备份目录不得混合清理，也不得执行 `docker compose down -v`。
 - 外部知识库必须同时配置 `/opt/frontend-knowledge:/knowledge-source:ro` 挂载和 `KNOWLEDGE_EXTRA_PATHS=/knowledge-source`；只有挂载而环境变量为空时，Agent 只会索引内置资料。
 - 主站引用 `/assets/siye-agent-chat.v0.3.0.js`，顶部能力描述为“混合检索 RAG Agent”。Widget 会明确告知用户问题将用于质量分析和评测，并提醒不要提交敏感信息；发布时继续使用新版本文件名，并保留旧资源与首页备份以便回滚。
 - Agent 只依据允许公开的知识资料回答，不使用模型自身知识补全未命中内容。API Key 和模型参数只存在服务器运行时 `.env`。
@@ -159,6 +160,7 @@
 - SIYES Agent 索引生命周期与预热：`E:\本地项目\siyes-agent\docs\RAG-INDEX-LIFECYCLE-AND-WARMUP.md`
 - SIYES Agent 检索升级计划：`E:\本地项目\siyes-agent\docs\RAG-RETRIEVAL-UPGRADE-PLAN.md`
 - SIYES Agent 可观测性：`E:\本地项目\siyes-agent\docs\RAG-OBSERVABILITY.md`
+- SIYES Agent 反馈备份与恢复：`E:\本地项目\siyes-agent\docs\RAG-FEEDBACK-BACKUP-AND-RESTORE.md`
 
 > 历史文档可能保留当时状态。当前生产操作以本文件“当前生产基线”、服务器实际 Compose 和实时检查为准；历史文档用于学习复盘，不可未经核对直接照搬。
 
